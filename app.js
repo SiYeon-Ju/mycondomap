@@ -1,18 +1,45 @@
 let map, condos = [], condoOverlays = [], foodOverlays = [], itineraryOverlays = [], meOverlay = null;
-let itinerary = loadItinerary();
-let selectedTripId = itinerary.trips[0] ? itinerary.trips[0].id : null;
+let itinerary = { trips: [] };
+let selectedTripId = null;
 let selectedDayId = null;
 let currentDetailItem = null;
 
-function loadItinerary() {
-  try {
-    const raw = localStorage.getItem("itinerary");
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
-  return { trips: [] };
+const firebaseConfig = {
+  apiKey: "AIzaSyBNH9DE1c8gBTRBhmxVZoflM_4I-b_19lk",
+  authDomain: "mycondomap-9d10b.firebaseapp.com",
+  projectId: "mycondomap-9d10b",
+  storageBucket: "mycondomap-9d10b.firebasestorage.app",
+  messagingSenderId: "575323061922",
+  appId: "1:575323061922:web:59394d90eef9d0323ca1fb",
+  measurementId: "G-218GV5JFTE",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+let itineraryUnsub = null;
+
+function itineraryDocId() {
+  return localStorage.getItem("condo_auth_id");
 }
+
+function startItinerarySync() {
+  const id = itineraryDocId();
+  if (!id) return;
+  if (itineraryUnsub) itineraryUnsub();
+  itineraryUnsub = db.collection("itineraries").doc(id).onSnapshot(snap => {
+    itinerary = snap.exists ? snap.data() : { trips: [] };
+    if (!itinerary.trips) itinerary.trips = [];
+    if (!selectedTripId || !itinerary.trips.find(t => t.id === selectedTripId)) {
+      selectedTripId = itinerary.trips[0] ? itinerary.trips[0].id : null;
+      selectedDayId = null;
+    }
+    if (!document.getElementById("itineraryPanel").hidden) renderAll();
+  });
+}
+
 function saveItinerary() {
-  localStorage.setItem("itinerary", JSON.stringify(itinerary));
+  const id = itineraryDocId();
+  if (!id) return;
+  db.collection("itineraries").doc(id).set(itinerary);
 }
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -29,6 +56,7 @@ const ACCOUNTS = [
 
 if (localStorage.getItem("condo_auth") === "ok") {
   document.getElementById("loginGate").style.display = "none";
+  startItinerarySync();
 }
 document.getElementById("loginForm").addEventListener("submit", e => {
   e.preventDefault();
@@ -39,6 +67,7 @@ document.getElementById("loginForm").addEventListener("submit", e => {
     localStorage.setItem("condo_auth", "ok");
     localStorage.setItem("condo_auth_id", account.id);
     document.getElementById("loginGate").style.display = "none";
+    startItinerarySync();
   } else {
     document.getElementById("loginError").hidden = false;
   }
@@ -423,6 +452,7 @@ function renderPlaceSearchResults(results) {
 function showItineraryPanel() {
   document.getElementById("sheet").hidden = true;
   document.getElementById("itineraryPanel").hidden = false;
+  if (!selectedTripId && itinerary.trips.length) selectedTripId = itinerary.trips[0].id;
   const trip = currentTrip();
   if (trip && !selectedDayId && trip.days.length) selectedDayId = trip.days[0].id;
   renderAll();
