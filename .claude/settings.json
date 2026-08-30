@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(jeju_condo_info.csv)",
+      "Write(jeju_condo_info.csv)",
+      "Edit(seoul_hotel_info.csv)",
+      "Write(seoul_hotel_info.csv)",
+      "Edit(gyeonggi_incheon_hotel_info.xlsx)",
+      "Write(gyeonggi_incheon_hotel_info.xlsx)"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>제주 콘도 지도</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="topbar">
+    <button class="filter-btn active" data-region="all">전체</button>
+    <button class="filter-btn" data-region="제주">제주</button>
+    <button class="filter-btn" data-region="경기인천">경기인천</button>
+    <button class="filter-btn" data-region="서울">서울</button>
+    <button id="foodBtn" class="filter-btn">🍴 주변 식당/카페</button>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="sheet">
+    <div id="sheetHandle"></div>
+    <div id="sheetList"></div>
+  </div>
+
+  <div id="detailCard" hidden>
+    <button id="detailClose">✕</button>
+    <div id="detailBody"></div>
+  </div>
+
+  <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c92c6827cc8ac71114d08b8527972208&libraries=services&autoload=false"></script>
+  <script src="app.js"></script>
+</body>
+</html>
