@@ -7,6 +7,16 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="loginGate">
+    <form id="loginForm">
+      <h1>제주 콘도 지도</h1>
+      <input id="loginId" type="text" placeholder="ID" autocomplete="off" required>
+      <input id="loginPw" type="password" placeholder="비밀번호" required>
+      <button type="submit">입장</button>
+      <p id="loginError" hidden>ID 또는 비밀번호가 틀렸습니다.</p>
+    </form>
+  </div>
+
   <div id="topbar">
     <button class="filter-btn active" data-region="all">전체</button>
     <button class="filter-btn" data-region="제주">제주</button>
