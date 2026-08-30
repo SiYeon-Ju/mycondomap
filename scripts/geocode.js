@@ -62,18 +62,31 @@ async function geocodeOnce(query, bbox) {
   return docs.find(d => inBbox(d, bbox)) || null;
 }
 
+function backoffPhrases(text) {
+  const tokens = text.split(/\s+/).filter(Boolean);
+  const out = [];
+  for (let n = tokens.length; n >= 1; n--) out.push(tokens.slice(0, n).join(" "));
+  return out;
+}
+
 async function geocode(지역, 콘도명, queryPrefix, bbox) {
-  const cleaned = 콘도명.replace(/\([^)]*\)/g, "").replace(/_/g, " ").trim();
-  const noSpace = cleaned.replace(/\s+/g, "");
+  const cleaned = 콘도명.replace(/\([^)]*\)/g, "").replace(/[_&.]/g, " ").replace(/\s+/g, " ").trim();
+  const noSuffixWords = cleaned.replace(/(호텔|리조트|펜션|앤리조트)/g, " ").replace(/\s+/g, " ").trim();
   const prefix = queryPrefix ? `${queryPrefix} ` : "";
-  const queries = [
-    `${prefix}${지역} ${콘도명}`,
-    `${prefix}${지역} ${cleaned}`,
-    `${prefix}${cleaned}`,
-    `${prefix}${noSpace}`,
-    cleaned,
-  ];
-  for (const q of queries) {
+
+  const phrases = [...new Set([...backoffPhrases(cleaned), ...backoffPhrases(noSuffixWords)])];
+  const queries = [`${prefix}${지역} ${콘도명}`];
+  for (const phrase of phrases) {
+    queries.push(`${prefix}${지역} ${phrase}`);
+    queries.push(phrase);
+  }
+  queries.push(cleaned.replace(/\s+/g, ""));
+
+  const seen = new Set();
+  for (const raw of queries) {
+    const q = raw.trim();
+    if (!q || seen.has(q)) continue;
+    seen.add(q);
     const place = await geocodeOnce(q, bbox);
     if (place) return place;
   }
