@@ -2,11 +2,16 @@
 html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-serif; }
 
 #loginGate {
-  position: fixed; inset: 0; z-index: 100;
-  background: #3d2b1f; display: flex; align-items: center; justify-content: center;
+  position: fixed; inset: 0; z-index: 100; background: #0a2540;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  overflow-y: auto; padding: 20px 0;
 }
-#loginForm { width: 260px; display: flex; flex-direction: column; gap: 10px; }
-#loginForm h1 { color: #fff; font-size: 18px; text-align: center; margin-bottom: 8px; }
+#loginBanner { width: 100%; max-width: 480px; border-radius: 0 0 20px 20px; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+#loginForm {
+  width: 260px; display: flex; flex-direction: column; gap: 10px; margin-top: 24px;
+  background: rgba(255,255,255,.08); backdrop-filter: blur(6px);
+  padding: 18px; border-radius: 14px;
+}
 #loginForm input { padding: 12px; border-radius: 8px; border: none; font-size: 15px; }
 #loginForm button { padding: 12px; border-radius: 8px; border: none; background: #d99c5f; font-weight: 700; font-size: 15px; }
 #loginForm #loginError { color: #ffb3b3; font-size: 13px; text-align: center; }
