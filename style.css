@@ -30,7 +30,7 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 .filter-btn.active { background: #3d2b1f; color: #fff; }
 
 #actionBar {
-  position: fixed; top: 46px; right: 0; z-index: 10;
+  position: fixed; top: 46px; left: 0; z-index: 10;
   display: flex; gap: 8px; padding: 4px 8px;
 }
 .action-btn {
@@ -40,9 +40,10 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 }
 #aiFloatBtn.not-ready { opacity: .5; }
 #locateBtn.loading { opacity: .5; pointer-events: none; }
+#locateDot { width: 14px; height: 14px; border-radius: 50%; background: #e53935; box-shadow: 0 0 0 4px rgba(229,57,53,.25); }
 #locateBtn.loading #locateDot { animation: dot-blink .6s ease-in-out infinite; }
 #locateStatus {
-  position: fixed; right: 8px; top: 92px; z-index: 10;
+  position: fixed; left: 8px; top: 92px; z-index: 10;
   background: rgba(61,43,31,.9); color: #fff; font-size: 12px; padding: 6px 12px;
   border-radius: 14px; white-space: nowrap; box-shadow: 0 1px 6px rgba(0,0,0,.3);
   animation: status-pulse 1.4s ease-in-out infinite;

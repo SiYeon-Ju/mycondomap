@@ -283,6 +283,8 @@ function addStopToDay(dayId, time, endTime) {
 function deleteStop(dayId, stopId) {
   const day = findDay(dayId);
   if (!day) return;
+  const stop = day.stops.find(s => s.id === stopId);
+  if (!confirm(`"${stop ? stop.name : "이 일정"}"을(를) 삭제할까요?`)) return;
   day.stops = day.stops.filter(s => s.id !== stopId);
   saveItinerary();
   renderTimeline();
