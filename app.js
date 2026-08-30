@@ -112,6 +112,15 @@ function makePin(text, extraClass, onClick) {
   return el;
 }
 
+function suggestedStartTime() {
+  const day = findDay(selectedDayId);
+  if (!day) return "00:00";
+  const { timed } = sortedStops(day);
+  if (!timed.length) return "00:00";
+  const last = timed[timed.length - 1];
+  return last.endTime || last.time || "00:00";
+}
+
 function addToItineraryHtml() {
   const trip = currentTrip();
   const daySelectHtml = trip
@@ -125,7 +134,7 @@ function addToItineraryHtml() {
     <div id="itineraryForm">
       ${daySelectHtml}
       <div class="time-row">
-        <input id="itineraryTimeInput" type="time" aria-label="시작 시각">
+        <input id="itineraryTimeInput" type="time" aria-label="시작 시각" value="${suggestedStartTime()}">
         <span>~</span>
         <input id="itineraryEndTimeInput" type="time" aria-label="종료 시각">
         <button id="itineraryConfirm" type="button">추가</button>
@@ -398,10 +407,17 @@ function timeRangeLabel(stop) {
   return stop.endTime ? `${stop.time}~${stop.endTime}` : stop.time;
 }
 
+function timeRangeLines(stop) {
+  if (!stop.time) return "미정";
+  return stop.endTime ? `${stop.time}<br>~${stop.endTime}` : stop.time;
+}
+
 function stopCard(day, stop, icon) {
+  const kakaoUrl = `https://map.kakao.com/link/map/${encodeURIComponent(stop.name)},${stop.lat},${stop.lng}`;
   return `
     <div class="timeline-stop" data-stop="${stop.id}">
-      <div class="t-time">${timeRangeLabel(stop)}</div>
+      <a class="k-badge" href="${kakaoUrl}" target="_blank" rel="noopener" aria-label="카카오맵에서 보기">K</a>
+      <div class="t-time">${timeRangeLines(stop)}</div>
       <div class="t-line"><div class="t-dot"></div><div class="t-bar"></div></div>
       <div class="t-card">
         <div class="t-name">${icon} ${stop.name}</div>
@@ -672,6 +688,7 @@ async function runAiSuggest() {
 function showItineraryPanel() {
   document.getElementById("sheet").hidden = true;
   document.getElementById("itineraryPanel").hidden = false;
+  document.getElementById("itineraryPanel").classList.remove("collapsed");
   if (!selectedTripId && itinerary.trips.length) selectedTripId = itinerary.trips[0].id;
   const trip = currentTrip();
   if (trip && !selectedDayId && trip.days.length) selectedDayId = trip.days[0].id;
@@ -702,6 +719,7 @@ kakao.maps.load(() => {
   document.querySelectorAll(".filter-btn[data-region]").forEach(btn => {
     btn.addEventListener("click", () => {
       hideItineraryPanel();
+      document.getElementById("sheet").classList.remove("collapsed");
       document.querySelectorAll(".filter-btn[data-region]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById("searchInput").value = "";
@@ -737,6 +755,13 @@ kakao.maps.load(() => {
 
   document.getElementById("itineraryFloatBtn").addEventListener("click", showItineraryPanel);
   document.getElementById("aiFloatBtn").addEventListener("click", runAiSuggest);
+
+  document.getElementById("sheetHandle").addEventListener("click", () => {
+    document.getElementById("sheet").classList.toggle("collapsed");
+  });
+  document.querySelector("#itineraryPanel .sheetHandle").addEventListener("click", () => {
+    document.getElementById("itineraryPanel").classList.toggle("collapsed");
+  });
   document.getElementById("aiResultsClose").addEventListener("click", closeAiResults);
   document.getElementById("aiBackdrop").addEventListener("click", closeAiResults);
 

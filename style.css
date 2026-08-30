@@ -20,7 +20,7 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 
 #topbar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 10;
-  display: flex; gap: 6px; padding: 8px; overflow-x: auto;
+  display: flex; gap: 6px; padding: 8px 8px 4px; overflow-x: auto;
   background: linear-gradient(rgba(0,0,0,.15), transparent);
 }
 .filter-btn {
@@ -28,6 +28,28 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
   background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); font-size: 14px; white-space: nowrap;
 }
 .filter-btn.active { background: #3d2b1f; color: #fff; }
+
+#actionBar {
+  position: fixed; top: 46px; right: 0; z-index: 10;
+  display: flex; gap: 8px; padding: 4px 8px;
+}
+.action-btn {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; border: none;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+#aiFloatBtn.not-ready { opacity: .5; }
+#locateBtn.loading { opacity: .5; pointer-events: none; }
+#locateBtn.loading #locateDot { animation: dot-blink .6s ease-in-out infinite; }
+#locateStatus {
+  position: fixed; right: 8px; top: 92px; z-index: 10;
+  background: rgba(61,43,31,.9); color: #fff; font-size: 12px; padding: 6px 12px;
+  border-radius: 14px; white-space: nowrap; box-shadow: 0 1px 6px rgba(0,0,0,.3);
+  animation: status-pulse 1.4s ease-in-out infinite;
+}
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: .55; }
+}
 
 /* price pin (kakao CustomOverlay content) */
 .price-pin {
@@ -61,11 +83,12 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 
 /* bottom sheet */
 #sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; overflow: hidden;
   background: #fff; border-radius: 16px 16px 0 0; box-shadow: 0 -2px 10px rgba(0,0,0,.2);
   max-height: 40vh; display: flex; flex-direction: column; transition: max-height .2s;
 }
-#sheetHandle, .sheetHandle { width: 36px; height: 4px; background: #ccc; border-radius: 2px; margin: 8px auto; }
+#sheet.collapsed { max-height: 28px; }
+#sheetHandle, .sheetHandle { width: 36px; height: 4px; background: #ccc; border-radius: 2px; margin: 8px auto; cursor: pointer; }
 #searchInput {
   display: block; width: calc(100% - 24px); margin: 0 12px 8px; padding: 10px 12px;
   border-radius: 10px; border: 1px solid #ddd; font-size: 14px;
@@ -75,29 +98,6 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 .condo-row .name { font-weight: 600; font-size: 14px; }
 .condo-row .price { color: #c0392b; font-size: 13px; margin-top: 2px; }
 
-#locateBtn, #itineraryFloatBtn, #foodFloatBtn, #aiFloatBtn {
-  position: fixed; right: 12px; z-index: 11;
-  width: 44px; height: 44px; border-radius: 50%; border: none;
-  background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3);
-  display: flex; align-items: center; justify-content: center;
-}
-#locateBtn { bottom: calc(40vh + 12px); }
-#itineraryFloatBtn { bottom: calc(40vh + 12px + 54px); font-size: 20px; }
-#aiFloatBtn { bottom: calc(40vh + 12px + 108px); font-size: 20px; }
-#aiFloatBtn.not-ready { opacity: .5; }
-#foodFloatBtn { bottom: calc(40vh + 12px + 162px); font-size: 20px; }
-#locateDot { width: 14px; height: 14px; border-radius: 50%; background: #e53935; box-shadow: 0 0 0 4px rgba(229,57,53,.25); }
-#locateBtn.loading #locateDot { animation: dot-blink .6s ease-in-out infinite; }
-#locateBtn.loading { opacity: .5; pointer-events: none; }
-#locateStatus {
-  position: fixed; right: 12px; bottom: calc(40vh + 12px + 236px); z-index: 11;
-  background: rgba(61,43,31,.9); color: #fff; font-size: 12px; padding: 6px 12px;
-  border-radius: 14px; white-space: nowrap; box-shadow: 0 1px 6px rgba(0,0,0,.3);
-  animation: status-pulse 1.4s ease-in-out infinite;
-}
-@keyframes status-pulse {
-  0%, 100% { opacity: 1; } 50% { opacity: .55; }
-}
 .me-dot {
   width: 16px; height: 16px; border-radius: 50%; background: #e53935;
   border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(229,57,53,.3), 0 1px 4px rgba(0,0,0,.4);
@@ -115,8 +115,9 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
     linear-gradient(rgba(255,255,255,.93), rgba(255,255,255,.93)),
     url(deamoon.png) center/cover;
   border-radius: 16px 16px 0 0; box-shadow: 0 -2px 10px rgba(0,0,0,.2);
-  max-height: 75vh; display: flex; flex-direction: column;
+  max-height: 75vh; display: flex; flex-direction: column; overflow: hidden;
 }
+#itineraryPanel.collapsed { max-height: 28px; }
 #sheet[hidden], #itineraryPanel[hidden] { display: none; }
 /* 헤더성 줄들(탭/검색/비용)은 절대 찌그러지지 않게, 목록만 남는 공간에서 스크롤 */
 #itineraryPanel > .sheetHandle, #itineraryPanel > #tripTabs, #itineraryPanel > #tripCostSummary,
@@ -150,8 +151,13 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 #timeline { overflow-y: auto; padding: 4px 16px 16px; }
 .timeline-empty { color: #999; font-size: 13px; text-align: center; padding: 24px 0; }
 .timeline-section-label { font-size: 12px; color: #999; margin: 10px 0 4px; }
-.timeline-stop { display: flex; gap: 10px; position: relative; }
-.timeline-stop .t-time { width: 44px; flex: none; font-size: 12px; color: #666; padding-top: 2px; }
+.timeline-stop { display: flex; gap: 6px; position: relative; align-items: flex-start; }
+.k-badge {
+  width: 20px; height: 20px; border-radius: 50%; background: #FEE500; color: #000;
+  font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center;
+  flex: none; text-decoration: none; margin-top: 2px;
+}
+.timeline-stop .t-time { width: 40px; flex: none; font-size: 11px; color: #666; padding-top: 2px; line-height: 1.3; }
 .timeline-stop .t-line {
   width: 12px; flex: none; display: flex; flex-direction: column; align-items: center;
 }
