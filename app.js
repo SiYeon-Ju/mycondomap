@@ -16,6 +16,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 let itineraryUnsub = null;
+let itineraryReady = false; // 서버에서 최초 1회 데이터 받기 전엔 저장(덮어쓰기) 금지 — 안 그러면 로그인 직후 빈 상태로 기존 데이터를 지워버릴 수 있음
 
 function itineraryDocId() {
   return localStorage.getItem("condo_auth_id");
@@ -24,10 +25,12 @@ function itineraryDocId() {
 function startItinerarySync() {
   const id = itineraryDocId();
   if (!id) return;
+  itineraryReady = false;
   if (itineraryUnsub) itineraryUnsub();
   itineraryUnsub = db.collection("itineraries").doc(id).onSnapshot(snap => {
     itinerary = snap.exists ? snap.data() : { trips: [] };
     if (!itinerary.trips) itinerary.trips = [];
+    itineraryReady = true;
     if (!selectedTripId || !itinerary.trips.find(t => t.id === selectedTripId)) {
       selectedTripId = itinerary.trips[0] ? itinerary.trips[0].id : null;
       selectedDayId = null;
@@ -37,10 +40,22 @@ function startItinerarySync() {
 }
 
 function saveItinerary() {
+  if (!itineraryReady) {
+    console.warn("아직 서버 데이터 로딩 전이라 저장을 건너뜀 (데이터 유실 방지)");
+    return;
+  }
   const id = itineraryDocId();
   if (!id) return;
   db.collection("itineraries").doc(id).set(itinerary);
 }
+function requireItineraryReady() {
+  if (!itineraryReady) {
+    alert("일정 데이터를 아직 불러오는 중이에요. 잠시 후 다시 시도해줘.");
+    return false;
+  }
+  return true;
+}
+
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
@@ -101,10 +116,12 @@ function addToItineraryHtml() {
         ${options}
         <option value="__new__">+ 새 Day</option>
       </select>
-      <input id="itineraryTimeInput" type="time" aria-label="시작 시각">
-      <span>~</span>
-      <input id="itineraryEndTimeInput" type="time" aria-label="종료 시각">
-      <button id="itineraryConfirm" type="button">추가</button>
+      <div class="time-row">
+        <input id="itineraryTimeInput" type="time" aria-label="시작 시각">
+        <span>~</span>
+        <input id="itineraryEndTimeInput" type="time" aria-label="종료 시각">
+        <button id="itineraryConfirm" type="button">추가</button>
+      </div>
     </div>
   `;
 }
@@ -299,7 +316,7 @@ function renderTripCost() {
   const total = tripCondoTotal(trip);
   if (!total) { el.hidden = true; return; }
   el.hidden = false;
-  el.textContent = `회사 콘도 최소 비용 합계: ${fmtWon(total)}~`;
+  el.textContent = `숙소 비용(최소) ${fmtWon(total)}~`;
 }
 
 function renderTripTabs() {
@@ -318,6 +335,7 @@ function renderTripTabs() {
     });
   });
   document.getElementById("addTripBtn").addEventListener("click", () => {
+    if (!requireItineraryReady()) return;
     const name = prompt("여행 이름 (예: 260831제주여행)", "");
     if (name === null) return;
     const trip = addTrip(name.trim() || `여행${itinerary.trips.length + 1}`);
@@ -327,6 +345,7 @@ function renderTripTabs() {
   });
   const delBtn = document.getElementById("deleteTripBtn");
   if (delBtn) delBtn.addEventListener("click", () => {
+    if (!requireItineraryReady()) return;
     const t = currentTrip();
     if (!t) return;
     if (!confirm(`"${t.name}" 여행을 통째로 삭제할까요? 안의 Day/일정이 모두 사라져요.`)) return;
@@ -352,6 +371,7 @@ function renderDayTabs() {
     });
   });
   document.getElementById("addDayBtn").addEventListener("click", () => {
+    if (!requireItineraryReady()) return;
     const day = addDay();
     if (!day) return;
     selectedDayId = day.id;
@@ -642,6 +662,7 @@ kakao.maps.load(() => {
     if (e.target.id === "addToItinerary") {
       document.getElementById("itineraryForm").classList.toggle("open");
     } else if (e.target.id === "itineraryConfirm") {
+      if (!requireItineraryReady()) return;
       const select = document.getElementById("itineraryDaySelect");
       const time = document.getElementById("itineraryTimeInput").value;
       const endTime = document.getElementById("itineraryEndTimeInput").value;
