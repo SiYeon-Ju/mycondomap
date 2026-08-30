@@ -1,6 +1,7 @@
 let map, condos = [], condoOverlays = [], foodOverlays = [], itineraryOverlays = [];
 let itinerary = loadItinerary();
-let selectedDayId = itinerary.days[0] ? itinerary.days[0].id : null;
+let selectedTripId = itinerary.trips[0] ? itinerary.trips[0].id : null;
+let selectedDayId = null;
 let currentDetailItem = null;
 
 function loadItinerary() {
@@ -8,7 +9,7 @@ function loadItinerary() {
     const raw = localStorage.getItem("itinerary");
     if (raw) return JSON.parse(raw);
   } catch (e) {}
-  return { days: [] };
+  return { trips: [] };
 }
 function saveItinerary() {
   localStorage.setItem("itinerary", JSON.stringify(itinerary));
@@ -16,9 +17,15 @@ function saveItinerary() {
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
+function currentTrip() {
+  return itinerary.trips.find(t => t.id === selectedTripId) || null;
+}
 
-const GATE_ID = "wntldus12";
-const GATE_PW = "seeyj12@@";
+// 계정 추가하려면 이 배열에 {id, pw} 항목만 늘리면 됨.
+// 같은 id로 로그인하는 사람들끼리 일정(Firestore 문서)을 공유함.
+const ACCOUNTS = [
+  { id: "wntldus12", pw: "seeyj12@@" },
+];
 
 if (localStorage.getItem("condo_auth") === "ok") {
   document.getElementById("loginGate").style.display = "none";
@@ -27,8 +34,10 @@ document.getElementById("loginForm").addEventListener("submit", e => {
   e.preventDefault();
   const id = document.getElementById("loginId").value;
   const pw = document.getElementById("loginPw").value;
-  if (id === GATE_ID && pw === GATE_PW) {
+  const account = ACCOUNTS.find(a => a.id === id && a.pw === pw);
+  if (account) {
     localStorage.setItem("condo_auth", "ok");
+    localStorage.setItem("condo_auth_id", account.id);
     document.getElementById("loginGate").style.display = "none";
   } else {
     document.getElementById("loginError").hidden = false;
@@ -54,7 +63,8 @@ function makePin(text, extraClass, onClick) {
 }
 
 function addToItineraryHtml() {
-  const options = itinerary.days.map(d => `<option value="${d.id}">${d.label}</option>`).join("");
+  const trip = currentTrip();
+  const options = (trip ? trip.days : []).map(d => `<option value="${d.id}">${d.label}</option>`).join("");
   return `
     <button id="addToItinerary" type="button">📅 일정에 추가</button>
     <div id="itineraryForm">
@@ -153,24 +163,58 @@ function searchNearbyFood() {
   });
 }
 
+function addTrip(name) {
+  const trip = { id: uid(), name, days: [] };
+  itinerary.trips.push(trip);
+  saveItinerary();
+  return trip;
+}
+
+function deleteTrip(tripId) {
+  itinerary.trips = itinerary.trips.filter(t => t.id !== tripId);
+  saveItinerary();
+  if (selectedTripId === tripId) {
+    selectedTripId = itinerary.trips[0] ? itinerary.trips[0].id : null;
+    selectedDayId = null;
+  }
+}
+
+function ensureTrip() {
+  let trip = currentTrip();
+  if (!trip) {
+    const name = prompt("여행 이름 (예: 260831제주여행)", "");
+    if (name === null) return null;
+    trip = addTrip(name.trim() || `여행${itinerary.trips.length + 1}`);
+    selectedTripId = trip.id;
+  }
+  return trip;
+}
+
 function addDay() {
-  const label = `Day${itinerary.days.length + 1}`;
+  const trip = ensureTrip();
+  if (!trip) return null;
+  const label = `Day${trip.days.length + 1}`;
   const day = { id: uid(), label, stops: [] };
-  itinerary.days.push(day);
+  trip.days.push(day);
   saveItinerary();
   return day;
 }
 
+function findDay(dayId) {
+  const trip = currentTrip();
+  return trip ? trip.days.find(d => d.id === dayId) : null;
+}
+
 function addStopToDay(dayId, time) {
   if (!currentDetailItem) return;
-  const day = itinerary.days.find(d => d.id === dayId);
+  const day = findDay(dayId);
   if (!day) return;
   day.stops.push({ id: uid(), time: time || "", ...currentDetailItem });
   saveItinerary();
 }
 
 function deleteStop(dayId, stopId) {
-  const day = itinerary.days.find(d => d.id === dayId);
+  const day = findDay(dayId);
   if (!day) return;
   day.stops = day.stops.filter(s => s.id !== stopId);
   saveItinerary();
@@ -179,7 +223,7 @@ function deleteStop(dayId, stopId) {
 }
 
 function editStopTime(dayId, stopId) {
-  const day = itinerary.days.find(d => d.id === dayId);
+  const day = findDay(dayId);
   const stop = day && day.stops.find(s => s.id === stopId);
   if (!stop) return;
   const next = prompt("시각 (HH:MM, 비우면 미정)", stop.time || "");
@@ -196,9 +240,51 @@ function sortedStops(day) {
   return { timed, untimed };
 }
 
+function renderAll() {
+  renderTripTabs();
+  renderDayTabs();
+  renderTimeline();
+  drawItineraryOverlay();
+}
+
+function renderTripTabs() {
+  const el = document.getElementById("tripTabs");
+  el.innerHTML = itinerary.trips.map(t =>
+    `<button data-trip="${t.id}" class="${t.id === selectedTripId ? "active" : ""}">${t.name}</button>`
+  ).join("") + `<button class="addDayBtn" id="addTripBtn">+ 여행 추가</button>` +
+    (currentTrip() ? `<button class="addDayBtn" id="deleteTripBtn">🗑 삭제</button>` : "");
+
+  el.querySelectorAll("button[data-trip]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedTripId = btn.dataset.trip;
+      const trip = currentTrip();
+      selectedDayId = trip && trip.days[0] ? trip.days[0].id : null;
+      renderAll();
+    });
+  });
+  document.getElementById("addTripBtn").addEventListener("click", () => {
+    const name = prompt("여행 이름 (예: 260831제주여행)", "");
+    if (name === null) return;
+    const trip = addTrip(name.trim() || `여행${itinerary.trips.length + 1}`);
+    selectedTripId = trip.id;
+    selectedDayId = null;
+    renderAll();
+  });
+  const delBtn = document.getElementById("deleteTripBtn");
+  if (delBtn) delBtn.addEventListener("click", () => {
+    const t = currentTrip();
+    if (!t) return;
+    if (!confirm(`"${t.name}" 여행을 통째로 삭제할까요? 안의 Day/일정이 모두 사라져요.`)) return;
+    deleteTrip(t.id);
+    renderAll();
+  });
+}
+
 function renderDayTabs() {
   const el = document.getElementById("dayTabs");
-  el.innerHTML = itinerary.days.map(d =>
+  const trip = currentTrip();
+  const days = trip ? trip.days : [];
+  el.innerHTML = days.map(d =>
     `<button data-day="${d.id}" class="${d.id === selectedDayId ? "active" : ""}">${d.label}</button>`
   ).join("") + `<button class="addDayBtn" id="addDayBtn">+ Day 추가</button>`;
 
@@ -212,11 +298,14 @@ function renderDayTabs() {
   });
   document.getElementById("addDayBtn").addEventListener("click", () => {
     const day = addDay();
+    if (!day) return;
     selectedDayId = day.id;
-    renderDayTabs();
-    renderTimeline();
-    drawItineraryOverlay();
+    renderAll();
   });
+}
+
+function stopIcon(type) {
+  return type === "food" ? "🍴" : type === "place" ? "📍" : "🏨";
 }
 
 function stopCard(day, stop, icon) {
@@ -238,7 +327,7 @@ function stopCard(day, stop, icon) {
 
 function renderTimeline() {
   const el = document.getElementById("timeline");
-  const day = itinerary.days.find(d => d.id === selectedDayId);
+  const day = findDay(selectedDayId);
   if (!day) {
     el.innerHTML = `<div class="timeline-empty">Day를 추가하고 핀을 눌러 '일정에 추가'로 담아보세요.</div>`;
     return;
@@ -251,11 +340,11 @@ function renderTimeline() {
   let html = "";
   if (untimed.length) {
     html += `<div class="timeline-section-label">미정</div>`;
-    html += untimed.map(s => stopCard(day, s, s.type === "food" ? "🍴" : "🏨")).join("");
+    html += untimed.map(s => stopCard(day, s, stopIcon(s.type))).join("");
   }
   if (timed.length) {
     html += `<div class="timeline-section-label">시간순</div>`;
-    html += timed.map(s => stopCard(day, s, s.type === "food" ? "🍴" : "🏨")).join("");
+    html += timed.map(s => stopCard(day, s, stopIcon(s.type))).join("");
   }
   el.innerHTML = html;
 
@@ -265,7 +354,7 @@ function renderTimeline() {
       if (act === "delete") deleteStop(dayId, stopId);
       else if (act === "edit") editStopTime(dayId, stopId);
       else if (act === "goto") {
-        const d = itinerary.days.find(x => x.id === dayId);
+        const d = findDay(dayId);
         const s = d.stops.find(x => x.id === stopId);
         if (s) map.panTo(new kakao.maps.LatLng(s.lat, s.lng));
       }
@@ -276,7 +365,7 @@ function renderTimeline() {
 function drawItineraryOverlay() {
   itineraryOverlays.forEach(o => o.setMap(null));
   itineraryOverlays = [];
-  const day = itinerary.days.find(d => d.id === selectedDayId);
+  const day = findDay(selectedDayId);
   if (!day) return;
   const { timed } = sortedStops(day);
   if (!timed.length) return;
@@ -307,13 +396,36 @@ function drawItineraryOverlay() {
   }
 }
 
+function renderPlaceSearchResults(results) {
+  const el = document.getElementById("placeSearchResults");
+  el.innerHTML = results.map((r, i) => `
+    <div class="place-row" data-i="${i}">
+      <div><div class="p-name">${r.place_name}</div><div class="p-addr">${r.road_address_name || r.address_name}</div></div>
+      <button>추가</button>
+    </div>
+  `).join("");
+  [...el.children].forEach((row, i) => {
+    row.addEventListener("click", () => {
+      const r = results[i];
+      currentDetailItem = { name: r.place_name, type: "place", lat: Number(r.y), lng: Number(r.x) };
+      map.panTo(new kakao.maps.LatLng(r.y, r.x));
+      document.getElementById("detailBody").innerHTML = `
+        <h2>${r.place_name}</h2>
+        <div class="row">${r.road_address_name || r.address_name}</div>
+        <div class="row"><span class="label">카테고리</span> ${r.category_name || "-"}</div>
+        ${addToItineraryHtml()}
+      `;
+      document.getElementById("detailCard").hidden = false;
+    });
+  });
+}
+
 function showItineraryPanel() {
   document.getElementById("sheet").hidden = true;
   document.getElementById("itineraryPanel").hidden = false;
-  if (!selectedDayId && itinerary.days.length) selectedDayId = itinerary.days[0].id;
-  renderDayTabs();
-  renderTimeline();
-  drawItineraryOverlay();
+  const trip = currentTrip();
+  if (trip && !selectedDayId && trip.days.length) selectedDayId = trip.days[0].id;
+  renderAll();
 }
 
 function hideItineraryPanel() {
@@ -388,5 +500,20 @@ kakao.maps.load(() => {
       document.getElementById("detailCard").hidden = true;
       showItineraryPanel();
     }
+  });
+
+  let placeSearchDebounce;
+  document.getElementById("placeSearchInput").addEventListener("input", e => {
+    clearTimeout(placeSearchDebounce);
+    const q = e.target.value.trim();
+    const resultsEl = document.getElementById("placeSearchResults");
+    if (!q) { resultsEl.innerHTML = ""; return; }
+    placeSearchDebounce = setTimeout(() => {
+      const ps = new kakao.maps.services.Places();
+      ps.keywordSearch(q, (results, status) => {
+        if (status !== kakao.maps.services.Status.OK) { resultsEl.innerHTML = ""; return; }
+        renderPlaceSearchResults(results.slice(0, 10));
+      });
+    }, 400);
   });
 });
