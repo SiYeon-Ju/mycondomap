@@ -573,6 +573,8 @@ function renderTimeline() {
           map.panTo(new kakao.maps.LatLng(s.lat, s.lng));
         }
       }
+      else if (act === "move-up") swapStopTime(dayId, stopId, "up");
+      else if (act === "move-down") swapStopTime(dayId, stopId, "down");
     });
   });
 }
