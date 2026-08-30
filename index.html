@@ -26,6 +26,7 @@
     <button class="filter-btn" data-region="전라">전라</button>
     <button class="filter-btn" data-region="경상">경상</button>
     <button id="foodBtn" class="filter-btn">🍴 주변 식당/카페</button>
+    <button id="itineraryBtn" class="filter-btn">📅 일정</button>
   </div>
 
   <div id="map"></div>
@@ -34,6 +35,12 @@
     <div id="sheetHandle"></div>
     <input id="searchInput" type="text" placeholder="숙소 이름 검색">
     <div id="sheetList"></div>
+  </div>
+
+  <div id="itineraryPanel" hidden>
+    <div class="sheetHandle"></div>
+    <div id="dayTabs"></div>
+    <div id="timeline"></div>
   </div>
 
   <div id="detailCard" hidden>
