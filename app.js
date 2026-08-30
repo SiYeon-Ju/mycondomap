@@ -800,11 +800,19 @@ kakao.maps.load(() => {
       document.getElementById("itineraryForm").classList.toggle("open");
     } else if (e.target.id === "itineraryConfirm") {
       if (!requireItineraryReady()) return;
-      const select = document.getElementById("itineraryDaySelect");
       const time = document.getElementById("itineraryTimeInput").value;
       const endTime = document.getElementById("itineraryEndTimeInput").value;
-      let dayId = select.value;
-      if (dayId === "__new__") dayId = addDay().id;
+      const newTripInput = document.getElementById("newTripNameInput");
+      let dayId;
+      if (newTripInput) {
+        const trip = addTrip(newTripInput.value.trim() || `여행${itinerary.trips.length + 1}`);
+        selectedTripId = trip.id;
+        dayId = addDay().id;
+      } else {
+        const select = document.getElementById("itineraryDaySelect");
+        dayId = select.value;
+        if (dayId === "__new__") dayId = addDay().id;
+      }
       addStopToDay(dayId, time, endTime);
       document.getElementById("itineraryForm").classList.remove("open");
       selectedDayId = dayId;
