@@ -65,9 +65,15 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
   display: flex; align-items: center; justify-content: center;
 }
 #locateDot { width: 14px; height: 14px; border-radius: 50%; background: #e53935; box-shadow: 0 0 0 4px rgba(229,57,53,.25); }
+#locateBtn.loading #locateDot { animation: dot-blink .6s ease-in-out infinite; }
 .me-dot {
   width: 16px; height: 16px; border-radius: 50%; background: #e53935;
   border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(229,57,53,.3), 0 1px 4px rgba(0,0,0,.4);
+  animation: dot-blink 1.2s ease-in-out infinite;
+}
+@keyframes dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .25; }
 }
 
 /* itinerary panel */

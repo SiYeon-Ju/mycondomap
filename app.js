@@ -518,8 +518,11 @@ kakao.maps.load(() => {
 
   document.getElementById("locateBtn").addEventListener("click", () => {
     if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
+    const btn = document.getElementById("locateBtn");
+    btn.classList.add("loading");
     navigator.geolocation.getCurrentPosition(
       pos => {
+        btn.classList.remove("loading");
         const loc = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
         map.setCenter(loc);
         map.setLevel(4);
@@ -529,7 +532,10 @@ kakao.maps.load(() => {
         meOverlay = new kakao.maps.CustomOverlay({ position: loc, content: dot, yAnchor: 0.5 });
         meOverlay.setMap(map);
       },
-      () => alert("위치 권한이 거부됐거나 가져올 수 없어요. 브라우저 설정에서 위치 권한을 허용해주세요."),
+      () => {
+        btn.classList.remove("loading");
+        alert("위치 권한이 거부됐거나 가져올 수 없어요. 브라우저 설정에서 위치 권한을 허용해주세요.");
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   });
