@@ -130,6 +130,7 @@ function addToItineraryHtml() {
 }
 
 function showDetail(c) {
+  closeAiResults();
   currentDetailItem = { name: c.콘도명, type: "condo", lat: c.lat, lng: c.lng, 본인부담금: c.본인부담금 };
   const body = document.getElementById("detailBody");
   body.innerHTML = `
@@ -197,6 +198,7 @@ function searchNearbyFood() {
       results.forEach(r => {
         const pos = new kakao.maps.LatLng(r.y, r.x);
         const pin = makePin(r.place_name, "food", () => {
+          closeAiResults();
           currentDetailItem = { name: r.place_name, type: "food", lat: Number(r.y), lng: Number(r.x) };
           document.getElementById("detailBody").innerHTML =
             `<h2>${r.place_name}</h2><div class="row">${r.road_address_name || r.address_name}</div>
@@ -585,49 +587,47 @@ function geocodePlaceName(name) {
   });
 }
 
-function setChromeDimmed(on) {
-  document.getElementById("topbar").classList.toggle("dimmed", on);
-  document.getElementById("itineraryPanel").classList.toggle("dimmed", on);
-}
-
 function closeAiResults() {
   document.getElementById("aiResults").hidden = true;
-  setChromeDimmed(false);
+  document.getElementById("aiBackdrop").hidden = true;
   aiPinOverlays.forEach(o => o.setMap(null));
   aiPinOverlays = [];
 }
 
 function renderAiResults(items) {
+  const dayId = selectedDayId;
   const el = document.getElementById("aiResultsList");
   el.innerHTML = items.map(it => `
     <div class="ai-row">
       <div class="ai-name">${it.place.place_name}</div>
       <div class="ai-reason">${it.reason || ""}</div>
-      <div class="ai-time">추천 시간: ${it.suggestedTime || "-"}</div>
+      <div class="ai-time">추천 시간: ${it.suggestedTime || "미정"}</div>
+      <button class="ai-adopt" type="button">이 Day에 추가</button>
     </div>
   `).join("");
   [...el.children].forEach((row, i) => {
-    row.addEventListener("click", () => {
-      const it = items[i];
-      const r = it.place;
+    const it = items[i];
+    const r = it.place;
+    row.querySelector(".ai-adopt").addEventListener("click", e => {
+      const btn = e.target;
+      if (btn.classList.contains("added")) return;
       currentDetailItem = { name: r.place_name, type: "place", lat: Number(r.y), lng: Number(r.x) };
-      map.panTo(new kakao.maps.LatLng(r.y, r.x));
-      document.getElementById("detailBody").innerHTML = `
-        <h2>${r.place_name}</h2>
-        <div class="row">${r.road_address_name || r.address_name}</div>
-        <div class="row"><span class="label">AI 추천 이유</span> ${it.reason || "-"}</div>
-        ${addToItineraryHtml()}
-      `;
-      document.getElementById("detailCard").hidden = false;
-      closeAiResults();
+      addStopToDay(dayId, it.suggestedTime || "", "");
+      currentDetailItem = null;
+      btn.textContent = "추가됨";
+      btn.classList.add("added");
+      renderTimeline();
+      drawItineraryOverlay();
     });
   });
+  document.getElementById("aiBackdrop").hidden = false;
   document.getElementById("aiResults").hidden = false;
 }
 
 async function runAiSuggest() {
   const day = findDay(selectedDayId);
   if (!day || !day.stops.length) return;
+  if (!requireItineraryReady()) return;
   const btn = document.getElementById("aiSuggestBtn");
   btn.classList.add("loading");
   btn.textContent = "✨ 추천받는 중...";
@@ -643,7 +643,6 @@ async function runAiSuggest() {
       alert("AI가 추천한 장소를 지도에서 찾지 못했어요. 다시 시도해봐.");
       return;
     }
-    setChromeDimmed(true);
     aiPinOverlays.forEach(o => o.setMap(null));
     aiPinOverlays = geocoded.map(it => {
       const pos = new kakao.maps.LatLng(it.place.y, it.place.x);
@@ -734,6 +733,7 @@ kakao.maps.load(() => {
   document.getElementById("itineraryFloatBtn").addEventListener("click", showItineraryPanel);
   document.getElementById("aiSuggestBtn").addEventListener("click", runAiSuggest);
   document.getElementById("aiResultsClose").addEventListener("click", closeAiResults);
+  document.getElementById("aiBackdrop").addEventListener("click", closeAiResults);
 
   document.getElementById("locateBtn").addEventListener("click", () => {
     if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
