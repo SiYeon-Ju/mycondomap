@@ -7,11 +7,14 @@ if (!REST_KEY) {
   process.exit(1);
 }
 
-const CAPITAL_BBOX = { latMin: 36.5, latMax: 38.3, lngMin: 126.2, lngMax: 127.9 };
+const MAINLAND_BBOX = { latMin: 33.8, latMax: 38.6, lngMin: 125.0, lngMax: 129.6 };
 const SOURCES = [
   { csv: "jeju_condo_info.csv", 권역: "제주", queryPrefix: "제주", bbox: { latMin: 33.0, latMax: 33.6, lngMin: 126.0, lngMax: 127.0 } },
-  { csv: "gyeonggi_incheon_hotel_info.csv", 권역: "경기인천", queryPrefix: "", bbox: CAPITAL_BBOX },
-  { csv: "seoul_hotel_info.csv", 권역: "서울", queryPrefix: "서울", bbox: CAPITAL_BBOX },
+  { csv: "gyeonggi_incheon_hotel_info.csv", 권역: "경기인천", queryPrefix: "", bbox: MAINLAND_BBOX },
+  { csv: "seoul_hotel_info.csv", 권역: "서울", queryPrefix: "서울", bbox: MAINLAND_BBOX },
+  { csv: "chungcheong_hotel_info.csv", 권역: "충청", queryPrefix: "", bbox: MAINLAND_BBOX },
+  { csv: "jeonla_hotel_info.csv", 권역: "전라", queryPrefix: "", bbox: MAINLAND_BBOX },
+  { csv: "gyeongsang_hotel_info.csv", 권역: "경상", queryPrefix: "", bbox: MAINLAND_BBOX },
 ];
 
 function parseCsv(text) {
@@ -70,7 +73,7 @@ function backoffPhrases(text) {
 }
 
 async function geocode(지역, 콘도명, queryPrefix, bbox) {
-  const cleaned = 콘도명.replace(/\([^)]*\)/g, "").replace(/[_&.]/g, " ").replace(/\s+/g, " ").trim();
+  const cleaned = 콘도명.replace(/\([^)]*\)/g, "").replace(/[_&.+]/g, " ").replace(/\s+/g, " ").trim();
   const noSuffixWords = cleaned.replace(/(호텔|리조트|펜션|앤리조트)/g, " ").replace(/\s+/g, " ").trim();
   const prefix = queryPrefix ? `${queryPrefix} ` : "";
 

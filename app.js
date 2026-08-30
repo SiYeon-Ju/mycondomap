@@ -134,8 +134,26 @@ kakao.maps.load(() => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".filter-btn[data-region]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
+      document.getElementById("searchInput").value = "";
       applyFilter(btn.dataset.region);
     });
+  });
+
+  document.getElementById("searchInput").addEventListener("input", e => {
+    const q = e.target.value.trim();
+    if (!q) {
+      const activeBtn = document.querySelector(".filter-btn[data-region].active");
+      applyFilter(activeBtn ? activeBtn.dataset.region : "all");
+      return;
+    }
+    const list = condos.filter(c => c.콘도명.includes(q));
+    renderCondoMarkers(list);
+    renderList(list);
+    if (list.length) {
+      const bounds = new kakao.maps.LatLngBounds();
+      list.forEach(c => bounds.extend(new kakao.maps.LatLng(c.lat, c.lng)));
+      map.setBounds(bounds);
+    }
   });
 
   document.getElementById("foodBtn").addEventListener("click", searchNearbyFood);
