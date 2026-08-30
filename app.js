@@ -506,7 +506,7 @@ kakao.maps.load(() => {
     }
   });
 
-  document.getElementById("foodBtn").addEventListener("click", () => {
+  document.getElementById("foodFloatBtn").addEventListener("click", () => {
     hideItineraryPanel();
     searchNearbyFood();
   });
