@@ -514,7 +514,7 @@ kakao.maps.load(() => {
     document.getElementById("detailCard").hidden = true;
   });
 
-  document.getElementById("itineraryBtn").addEventListener("click", showItineraryPanel);
+  document.getElementById("itineraryFloatBtn").addEventListener("click", showItineraryPanel);
 
   document.getElementById("locateBtn").addEventListener("click", () => {
     if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
