@@ -94,7 +94,10 @@ function minPrice(str) {
 }
 
 function fmtWon(n) {
-  return n >= 10000 ? Math.round(n / 10000) + "만" : n + "원";
+  if (n < 10000) return n.toLocaleString() + "원";
+  const man = n / 10000;
+  // 3.5만을 "4만"으로 올려 보여주면 실제보다 비싸 보이므로 소수 첫째자리까지 유지
+  return (Number.isInteger(man) ? man : man.toFixed(1)) + "만";
 }
 
 function makePin(text, extraClass, onClick) {
@@ -405,7 +408,17 @@ function stopCard(day, stop, icon) {
   `;
 }
 
+function renderAiButtonState() {
+  const day = findDay(selectedDayId);
+  const btn = document.getElementById("aiSuggestBtn");
+  const note = document.getElementById("aiSeedNote");
+  if (!day) { btn.hidden = true; note.hidden = true; return; }
+  if (day.stops.length) { btn.hidden = false; note.hidden = true; }
+  else { btn.hidden = true; note.hidden = false; }
+}
+
 function renderTimeline() {
+  renderAiButtonState();
   const el = document.getElementById("timeline");
   const day = findDay(selectedDayId);
   if (!day) {
@@ -548,6 +561,110 @@ function renderPlaceSearchResults(results) {
   });
 }
 
+const AI_PROXY_URL = "https://vercel-proxy-nine-eosin.vercel.app/api/suggest";
+let aiPinOverlays = [];
+
+async function fetchAiSuggestions(stops) {
+  const res = await fetch(AI_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stops: stops.map(s => ({ name: s.name, lat: s.lat, lng: s.lng })) }),
+  });
+  if (!res.ok) throw new Error(`AI 서버 오류 ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data.suggestions) ? data.suggestions : [];
+}
+
+function geocodePlaceName(name) {
+  return new Promise(resolve => {
+    const ps = new kakao.maps.services.Places();
+    ps.keywordSearch(name, (results, status) => {
+      if (status === kakao.maps.services.Status.OK && results.length) resolve(results[0]);
+      else resolve(null);
+    });
+  });
+}
+
+function setChromeDimmed(on) {
+  document.getElementById("topbar").classList.toggle("dimmed", on);
+  document.getElementById("itineraryPanel").classList.toggle("dimmed", on);
+}
+
+function closeAiResults() {
+  document.getElementById("aiResults").hidden = true;
+  setChromeDimmed(false);
+  aiPinOverlays.forEach(o => o.setMap(null));
+  aiPinOverlays = [];
+}
+
+function renderAiResults(items) {
+  const el = document.getElementById("aiResultsList");
+  el.innerHTML = items.map(it => `
+    <div class="ai-row">
+      <div class="ai-name">${it.place.place_name}</div>
+      <div class="ai-reason">${it.reason || ""}</div>
+      <div class="ai-time">추천 시간: ${it.suggestedTime || "-"}</div>
+    </div>
+  `).join("");
+  [...el.children].forEach((row, i) => {
+    row.addEventListener("click", () => {
+      const it = items[i];
+      const r = it.place;
+      currentDetailItem = { name: r.place_name, type: "place", lat: Number(r.y), lng: Number(r.x) };
+      map.panTo(new kakao.maps.LatLng(r.y, r.x));
+      document.getElementById("detailBody").innerHTML = `
+        <h2>${r.place_name}</h2>
+        <div class="row">${r.road_address_name || r.address_name}</div>
+        <div class="row"><span class="label">AI 추천 이유</span> ${it.reason || "-"}</div>
+        ${addToItineraryHtml()}
+      `;
+      document.getElementById("detailCard").hidden = false;
+      closeAiResults();
+    });
+  });
+  document.getElementById("aiResults").hidden = false;
+}
+
+async function runAiSuggest() {
+  const day = findDay(selectedDayId);
+  if (!day || !day.stops.length) return;
+  const btn = document.getElementById("aiSuggestBtn");
+  btn.classList.add("loading");
+  btn.textContent = "✨ 추천받는 중...";
+  try {
+    const suggestions = await fetchAiSuggestions(day.stops);
+    const geocoded = [];
+    for (const s of suggestions) {
+      const place = await geocodePlaceName(s.name);
+      if (place) geocoded.push({ ...s, place });
+      if (geocoded.length >= 3) break;
+    }
+    if (!geocoded.length) {
+      alert("AI가 추천한 장소를 지도에서 찾지 못했어요. 다시 시도해봐.");
+      return;
+    }
+    setChromeDimmed(true);
+    aiPinOverlays.forEach(o => o.setMap(null));
+    aiPinOverlays = geocoded.map(it => {
+      const pos = new kakao.maps.LatLng(it.place.y, it.place.x);
+      const pin = makePin(`✨ ${it.place.place_name}`, "ai-pin", null);
+      const overlay = new kakao.maps.CustomOverlay({ position: pos, content: pin, yAnchor: 1.4 });
+      overlay.setMap(map);
+      return overlay;
+    });
+    const bounds = new kakao.maps.LatLngBounds();
+    geocoded.forEach(it => bounds.extend(new kakao.maps.LatLng(it.place.y, it.place.x)));
+    day.stops.forEach(s => bounds.extend(new kakao.maps.LatLng(s.lat, s.lng)));
+    map.setBounds(bounds);
+    renderAiResults(geocoded);
+  } catch (e) {
+    alert("AI 추천을 받아오지 못했어요: " + e.message);
+  } finally {
+    btn.classList.remove("loading");
+    btn.textContent = "✨ AI로 주변 추천받기";
+  }
+}
+
 function showItineraryPanel() {
   document.getElementById("sheet").hidden = true;
   document.getElementById("itineraryPanel").hidden = false;
@@ -562,6 +679,7 @@ function hideItineraryPanel() {
   document.getElementById("sheet").hidden = false;
   itineraryOverlays.forEach(o => o.setMap(null));
   itineraryOverlays = [];
+  closeAiResults();
 }
 
 kakao.maps.load(() => {
@@ -614,6 +732,8 @@ kakao.maps.load(() => {
   });
 
   document.getElementById("itineraryFloatBtn").addEventListener("click", showItineraryPanel);
+  document.getElementById("aiSuggestBtn").addEventListener("click", runAiSuggest);
+  document.getElementById("aiResultsClose").addEventListener("click", closeAiResults);
 
   document.getElementById("locateBtn").addEventListener("click", () => {
     if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
@@ -624,19 +744,19 @@ kakao.maps.load(() => {
     status.hidden = false;
     status.textContent = "위치 찾는 중";
 
+    const GOOD_ENOUGH_ACCURACY_M = 50;
+    const MAX_WAIT_MS = 20000;
     let best = null;
     let lastError = null;
-    const watchId = navigator.geolocation.watchPosition(
-      pos => {
-        if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
-        status.textContent = `위치 정밀도 높이는 중 (오차 ${Math.round(pos.coords.accuracy)}m)`;
-      },
-      err => { lastError = err; },
-      { enableHighAccuracy: true, maximumAge: 0 }
-    );
+    let finished = false;
+    let watchId = null;
+    let timeoutId = null;
 
-    setTimeout(() => {
-      navigator.geolocation.clearWatch(watchId);
+    function finish() {
+      if (finished) return;
+      finished = true;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      clearTimeout(timeoutId);
       btn.classList.remove("loading");
       status.hidden = true;
       if (!best) {
@@ -655,7 +775,19 @@ kakao.maps.load(() => {
       dot.className = "me-dot";
       meOverlay = new kakao.maps.CustomOverlay({ position: loc, content: dot, yAnchor: 0.5 });
       meOverlay.setMap(map);
-    }, 4000);
+    }
+
+    watchId = navigator.geolocation.watchPosition(
+      pos => {
+        if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+        status.textContent = `위치 정밀도 높이는 중 (오차 ${Math.round(pos.coords.accuracy)}m)`;
+        if (pos.coords.accuracy <= GOOD_ENOUGH_ACCURACY_M) finish(); // 충분히 정확하면 굳이 더 안 기다림
+      },
+      err => { lastError = err; },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: MAX_WAIT_MS }
+    );
+
+    timeoutId = setTimeout(finish, MAX_WAIT_MS); // GPS 콜드스타트는 실제로 10~20초 넘게 걸릴 수 있어서 여유있게 기다림
   });
 
   document.getElementById("detailCard").addEventListener("click", e => {

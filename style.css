@@ -165,6 +165,30 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 #itineraryForm input[type="time"] { flex: 1; min-width: 0; }
 #itineraryForm button { padding: 8px 10px; border-radius: 6px; border: none; background: #3d2b1f; color: #fff; font-size: 13px; flex: none; }
 #tripCostSummary { padding: 0 12px 6px; font-size: 10px; color: #c0392b; }
+#aiSuggestBtn {
+  margin: 0 12px 8px; padding: 10px; border-radius: 8px; border: none;
+  background: linear-gradient(135deg, #7b2ff7, #b06ab3); color: #fff; font-weight: 700; width: calc(100% - 24px);
+}
+#aiSuggestBtn.loading { opacity: .6; pointer-events: none; }
+#aiSeedNote { margin: 0 12px 8px; font-size: 12px; color: #999; }
+
+#topbar.dimmed, #itineraryPanel.dimmed, #sheet.dimmed { opacity: .15; pointer-events: none; transition: opacity .2s; }
+
+/* AI 추천 결과 카드 (지도 위 핀은 route-marker 스타일 재사용) */
+#aiResults {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
+  background: #fff; border-radius: 16px 16px 0 0; box-shadow: 0 -2px 12px rgba(0,0,0,.3);
+  max-height: 55vh; display: flex; flex-direction: column;
+}
+#aiResultsHeader { padding: 4px 16px 8px; font-weight: 700; }
+#aiResultsList { overflow-y: auto; padding: 0 16px; }
+#aiResultsList .ai-row { padding: 10px 0; border-bottom: 1px solid #eee; }
+#aiResultsList .ai-name { font-weight: 600; font-size: 14px; }
+#aiResultsList .ai-reason { font-size: 12px; color: #777; margin: 3px 0; }
+#aiResultsList .ai-time { font-size: 11px; color: #7b2ff7; }
+#aiResultsClose { margin: 8px 16px 16px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #fff; }
+.ai-pin { background: #7b2ff7 !important; }
+.ai-pin::after { border-top-color: #7b2ff7 !important; }
 
 /* detail card */
 #detailCard {
