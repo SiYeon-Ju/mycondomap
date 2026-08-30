@@ -519,25 +519,38 @@ kakao.maps.load(() => {
   document.getElementById("locateBtn").addEventListener("click", () => {
     if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
     const btn = document.getElementById("locateBtn");
+    const status = document.getElementById("locateStatus");
     btn.classList.add("loading");
-    navigator.geolocation.getCurrentPosition(
+    status.hidden = false;
+    status.textContent = "위치 찾는 중";
+
+    let best = null;
+    const watchId = navigator.geolocation.watchPosition(
       pos => {
-        btn.classList.remove("loading");
-        const loc = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
-        map.setCenter(loc);
-        map.setLevel(4);
-        if (meOverlay) meOverlay.setMap(null);
-        const dot = document.createElement("div");
-        dot.className = "me-dot";
-        meOverlay = new kakao.maps.CustomOverlay({ position: loc, content: dot, yAnchor: 0.5 });
-        meOverlay.setMap(map);
+        if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+        status.textContent = `위치 정밀도 높이는 중 (오차 ${Math.round(pos.coords.accuracy)}m)`;
       },
-      () => {
-        btn.classList.remove("loading");
-        alert("위치 권한이 거부됐거나 가져올 수 없어요. 브라우저 설정에서 위치 권한을 허용해주세요.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 0 }
     );
+
+    setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+      btn.classList.remove("loading");
+      status.hidden = true;
+      if (!best) {
+        alert("위치 권한이 거부됐거나 가져올 수 없어요. 브라우저 설정에서 위치 권한을 허용해주세요.");
+        return;
+      }
+      const loc = new kakao.maps.LatLng(best.coords.latitude, best.coords.longitude);
+      map.setCenter(loc);
+      map.setLevel(4);
+      if (meOverlay) meOverlay.setMap(null);
+      const dot = document.createElement("div");
+      dot.className = "me-dot";
+      meOverlay = new kakao.maps.CustomOverlay({ position: loc, content: dot, yAnchor: 0.5 });
+      meOverlay.setMap(map);
+    }, 4000);
   });
 
   document.getElementById("detailCard").addEventListener("click", e => {
