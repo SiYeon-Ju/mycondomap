@@ -1,5 +1,23 @@
 let map, condos = [], condoOverlays = [], foodOverlays = [];
 
+const GATE_ID = "wntldus12";
+const GATE_PW = "seeyj12@@";
+
+if (localStorage.getItem("condo_auth") === "ok") {
+  document.getElementById("loginGate").style.display = "none";
+}
+document.getElementById("loginForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const id = document.getElementById("loginId").value;
+  const pw = document.getElementById("loginPw").value;
+  if (id === GATE_ID && pw === GATE_PW) {
+    localStorage.setItem("condo_auth", "ok");
+    document.getElementById("loginGate").style.display = "none";
+  } else {
+    document.getElementById("loginError").hidden = false;
+  }
+});
+
 function minPrice(str) {
   const m = str.replace(/,/g, "").match(/\d+/);
   return m ? Number(m[0]) : 0;

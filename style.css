@@ -1,6 +1,16 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-serif; }
 
+#loginGate {
+  position: fixed; inset: 0; z-index: 100;
+  background: #3d2b1f; display: flex; align-items: center; justify-content: center;
+}
+#loginForm { width: 260px; display: flex; flex-direction: column; gap: 10px; }
+#loginForm h1 { color: #fff; font-size: 18px; text-align: center; margin-bottom: 8px; }
+#loginForm input { padding: 12px; border-radius: 8px; border: none; font-size: 15px; }
+#loginForm button { padding: 12px; border-radius: 8px; border: none; background: #d99c5f; font-weight: 700; font-size: 15px; }
+#loginForm #loginError { color: #ffb3b3; font-size: 13px; text-align: center; }
+
 #map { position: fixed; inset: 0; }
 
 #topbar {
