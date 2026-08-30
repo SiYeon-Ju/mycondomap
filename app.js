@@ -472,7 +472,10 @@ function renderTimeline() {
       else if (act === "goto") {
         const d = findDay(dayId);
         const s = d.stops.find(x => x.id === stopId);
-        if (s) map.panTo(new kakao.maps.LatLng(s.lat, s.lng));
+        if (s) {
+          map.setLevel(1);
+          map.panTo(new kakao.maps.LatLng(s.lat, s.lng));
+        }
       }
     });
   });
