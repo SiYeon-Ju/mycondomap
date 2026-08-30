@@ -139,8 +139,14 @@ function addToItineraryHtml() {
   const tripOptions = itinerary.trips
     .map(t => `<option value="${t.id}" ${t.id === selectedTripId ? "selected" : ""}>${t.name}</option>`)
     .join("");
+  const kakaoAppUrl = currentDetailItem
+    ? `kakaomap://look?p=${currentDetailItem.lat},${currentDetailItem.lng}`
+    : "";
   return `
-    <button id="addToItinerary" type="button">📅 일정에 추가</button>
+    <div class="add-itinerary-row">
+      <button id="addToItinerary" type="button">📅 일정에 추가</button>
+      <a class="k-badge" href="${kakaoAppUrl}" aria-label="카카오맵 앱에서 보기">K</a>
+    </div>
     <div id="itineraryForm">
       <select id="itineraryTripSelect">
         ${tripOptions}
@@ -758,15 +764,22 @@ async function runAiSuggest() {
   const btn = document.getElementById("aiFloatBtn");
   btn.classList.add("loading");
   try {
+    const AI_RADIUS_KM = 1;
+    const centerLat = day.stops.reduce((s, x) => s + x.lat, 0) / day.stops.length;
+    const centerLng = day.stops.reduce((s, x) => s + x.lng, 0) / day.stops.length;
+
     const suggestions = await fetchAiSuggestions(day.stops);
     const geocoded = [];
     for (const s of suggestions) {
       const place = await geocodePlaceName(s.name);
-      if (place) geocoded.push({ ...s, place });
+      if (!place) continue;
+      const distKm = haversineKm(centerLat, centerLng, Number(place.y), Number(place.x));
+      if (distKm > AI_RADIUS_KM) continue; // 엉뚱한 지역 매칭 거름 (예: 콘도는 제주인데 이름 같은 곳이 강화도에 있는 경우)
+      geocoded.push({ ...s, place });
       if (geocoded.length >= 3) break;
     }
     if (!geocoded.length) {
-      alert("AI가 추천한 장소를 지도에서 찾지 못했어요. 다시 시도해봐.");
+      alert("이 근처(1km 이내)에서 AI가 추천할 만한 곳을 못 찾았어요. 다시 시도해봐.");
       return;
     }
     aiPinOverlays.forEach(o => o.setMap(null));
