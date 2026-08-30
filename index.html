@@ -46,7 +46,17 @@
     <input id="placeSearchInput" type="text" placeholder="장소 검색 (성산일출봉, 협재해수욕장...)">
     <div id="placeSearchResults"></div>
     <div id="dayTabs"></div>
+    <button id="aiSuggestBtn" hidden>✨ AI로 주변 추천받기</button>
+    <p id="aiSeedNote" hidden>먼저 이 Day에 콘도나 장소를 하나 이상 담아야 AI 추천을 받을 수 있어요.</p>
     <div id="timeline"></div>
+  </div>
+
+  <div id="aiDim" hidden></div>
+  <div id="aiResults" hidden>
+    <div class="sheetHandle"></div>
+    <div id="aiResultsHeader">✨ AI 추천</div>
+    <div id="aiResultsList"></div>
+    <button id="aiResultsClose">닫기</button>
   </div>
 
   <div id="detailCard" hidden>
@@ -57,6 +67,7 @@
   <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c92c6827cc8ac71114d08b8527972208&libraries=services&autoload=false"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
