@@ -1,4 +1,4 @@
-let map, condos = [], condoOverlays = [], foodOverlays = [], itineraryOverlays = [];
+let map, condos = [], condoOverlays = [], foodOverlays = [], itineraryOverlays = [], meOverlay = null;
 let itinerary = loadItinerary();
 let selectedTripId = itinerary.trips[0] ? itinerary.trips[0].id : null;
 let selectedDayId = null;
@@ -485,6 +485,24 @@ kakao.maps.load(() => {
   });
 
   document.getElementById("itineraryBtn").addEventListener("click", showItineraryPanel);
+
+  document.getElementById("locateBtn").addEventListener("click", () => {
+    if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const loc = new kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+        map.setCenter(loc);
+        map.setLevel(4);
+        if (meOverlay) meOverlay.setMap(null);
+        const dot = document.createElement("div");
+        dot.className = "me-dot";
+        meOverlay = new kakao.maps.CustomOverlay({ position: loc, content: dot, yAnchor: 0.5 });
+        meOverlay.setMap(map);
+      },
+      () => alert("위치 권한이 거부됐거나 가져올 수 없어요. 브라우저 설정에서 위치 권한을 허용해주세요."),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
 
   document.getElementById("detailCard").addEventListener("click", e => {
     if (e.target.id === "addToItinerary") {
