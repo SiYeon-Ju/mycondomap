@@ -291,17 +291,16 @@ function deleteStop(dayId, stopId) {
   drawItineraryOverlay();
 }
 
-function editStopTime(dayId, stopId) {
+let editingStopId = null;
+
+function saveStopTimeEdit(dayId, stopId, start, end) {
   const day = findDay(dayId);
   const stop = day && day.stops.find(s => s.id === stopId);
   if (!stop) return;
-  const current = stop.time + (stop.endTime ? `~${stop.endTime}` : "");
-  const next = prompt("시각 (예: 10:00~11:00, 비우면 미정)", current);
-  if (next === null) return;
-  const [start, end] = next.split("~").map(s => s.trim());
   stop.time = start || "";
   stop.endTime = end || "";
   saveItinerary();
+  editingStopId = null;
   renderTimeline();
   drawItineraryOverlay();
 }
@@ -416,6 +415,7 @@ function timeRangeLines(stop) {
 
 function stopCard(day, stop, icon) {
   const kakaoAppUrl = `kakaomap://look?p=${stop.lat},${stop.lng}`;
+  const editing = stop.id === editingStopId;
   return `
     <div class="timeline-stop" data-stop="${stop.id}">
       <a class="k-badge" href="${kakaoAppUrl}" aria-label="카카오맵 앱에서 보기">K</a>
@@ -423,11 +423,23 @@ function stopCard(day, stop, icon) {
       <div class="t-line"><div class="t-dot"></div><div class="t-bar"></div></div>
       <div class="t-card">
         <div class="t-name">${icon} ${stop.name}</div>
+        ${editing ? `
+        <div class="time-row">
+          <input type="time" class="edit-time-start" value="${stop.time || ""}" aria-label="시작 시각">
+          <span>~</span>
+          <input type="time" class="edit-time-end" value="${stop.endTime || ""}" aria-label="종료 시각">
+        </div>
+        <div class="t-actions">
+          <button data-act="save-edit" data-day="${day.id}" data-stop="${stop.id}">저장</button>
+          <button data-act="cancel-edit" data-day="${day.id}" data-stop="${stop.id}">취소</button>
+        </div>
+        ` : `
         <div class="t-actions">
           <button data-act="goto" data-day="${day.id}" data-stop="${stop.id}">지도보기</button>
           <button data-act="edit" data-day="${day.id}" data-stop="${stop.id}">수정</button>
           <button data-act="delete" data-day="${day.id}" data-stop="${stop.id}">삭제</button>
         </div>
+        `}
       </div>
     </div>
   `;
@@ -468,7 +480,14 @@ function renderTimeline() {
     const { act, day: dayId, stop: stopId } = btn.dataset;
     btn.addEventListener("click", () => {
       if (act === "delete") deleteStop(dayId, stopId);
-      else if (act === "edit") editStopTime(dayId, stopId);
+      else if (act === "edit") { editingStopId = stopId; renderTimeline(); }
+      else if (act === "cancel-edit") { editingStopId = null; renderTimeline(); }
+      else if (act === "save-edit") {
+        const row = btn.closest(".timeline-stop");
+        const start = row.querySelector(".edit-time-start").value;
+        const end = row.querySelector(".edit-time-end").value;
+        saveStopTimeEdit(dayId, stopId, start, end);
+      }
       else if (act === "goto") {
         const d = findDay(dayId);
         const s = d.stops.find(x => x.id === stopId);
