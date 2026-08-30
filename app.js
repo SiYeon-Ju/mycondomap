@@ -417,11 +417,9 @@ function stopCard(day, stop, icon) {
 
 function renderAiButtonState() {
   const day = findDay(selectedDayId);
-  const btn = document.getElementById("aiSuggestBtn");
-  const note = document.getElementById("aiSeedNote");
-  if (!day) { btn.hidden = true; note.hidden = true; return; }
-  if (day.stops.length) { btn.hidden = false; note.hidden = true; }
-  else { btn.hidden = true; note.hidden = false; }
+  const btn = document.getElementById("aiFloatBtn");
+  const ready = !!(day && day.stops.length);
+  btn.classList.toggle("not-ready", !ready);
 }
 
 function renderTimeline() {
@@ -630,12 +628,15 @@ function renderAiResults(items) {
 }
 
 async function runAiSuggest() {
+  if (document.getElementById("itineraryPanel").hidden) showItineraryPanel();
   const day = findDay(selectedDayId);
-  if (!day || !day.stops.length) return;
+  if (!day || !day.stops.length) {
+    alert("먼저 이 Day에 콘도나 장소를 하나 이상 담아야, 그 주변으로 AI가 추천해줄 수 있어요.");
+    return;
+  }
   if (!requireItineraryReady()) return;
-  const btn = document.getElementById("aiSuggestBtn");
+  const btn = document.getElementById("aiFloatBtn");
   btn.classList.add("loading");
-  btn.textContent = "✨ 추천받는 중...";
   try {
     const suggestions = await fetchAiSuggestions(day.stops);
     const geocoded = [];
@@ -665,7 +666,6 @@ async function runAiSuggest() {
     alert("AI 추천을 받아오지 못했어요: " + e.message);
   } finally {
     btn.classList.remove("loading");
-    btn.textContent = "✨ AI로 주변 추천받기";
   }
 }
 
@@ -736,7 +736,7 @@ kakao.maps.load(() => {
   });
 
   document.getElementById("itineraryFloatBtn").addEventListener("click", showItineraryPanel);
-  document.getElementById("aiSuggestBtn").addEventListener("click", runAiSuggest);
+  document.getElementById("aiFloatBtn").addEventListener("click", runAiSuggest);
   document.getElementById("aiResultsClose").addEventListener("click", closeAiResults);
   document.getElementById("aiBackdrop").addEventListener("click", closeAiResults);
 

@@ -20,7 +20,8 @@ export default async function handler(req, res) {
 
   const seedText = stops.map(s => `${s.name} (${s.lat}, ${s.lng})`).join(", ");
   const prompt = `다음은 한국 여행 일정에 이미 담긴 장소들이야: ${seedText}
-이 장소들 근처에 실제로 존재하는 관광지, 맛집, 카페 중 딱 3곳을 추천해줘.
+이 장소들 근처에 실제로 존재하는 관광지, 액티비티, 맛집, 카페 중 딱 3곳을 추천해줘.
+호텔/콘도/리조트/펜션 등 숙박시설은 절대 추천하지 마 — 숙소는 이미 다 정해져 있어서 필요 없어.
 반드시 아래 JSON 배열 형식으로만 답해. 다른 설명 문장은 절대 쓰지 마:
 [{"name": "정확한 상호명", "reason": "한국어로 한 문장 추천 이유", "suggestedTime": "HH:MM"}]`;
 
