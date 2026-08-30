@@ -122,17 +122,18 @@ function suggestedStartTime() {
 }
 
 function addToItineraryHtml() {
-  const trip = currentTrip();
-  const daySelectHtml = trip
-    ? `<select id="itineraryDaySelect">
-         ${trip.days.map(d => `<option value="${d.id}">${d.label}</option>`).join("")}
-         <option value="__new__">+ 새 Day</option>
-       </select>`
-    : `<input id="newTripNameInput" type="text" placeholder="여행 이름 (예: 260831제주여행)">`;
+  const tripOptions = itinerary.trips
+    .map(t => `<option value="${t.id}" ${t.id === selectedTripId ? "selected" : ""}>${t.name}</option>`)
+    .join("");
   return `
     <button id="addToItinerary" type="button">📅 일정에 추가</button>
     <div id="itineraryForm">
-      ${daySelectHtml}
+      <select id="itineraryTripSelect">
+        ${tripOptions}
+        <option value="__newtrip__">+ 새 여행</option>
+      </select>
+      <input id="newTripNameInput" type="text" placeholder="여행 이름 (예: 260831제주여행)" style="display:${itinerary.trips.length ? "none" : "block"}">
+      <select id="itineraryDaySelect"></select>
       <div class="time-row">
         <input id="itineraryTimeInput" type="time" aria-label="시작 시각" value="${suggestedStartTime()}">
         <span>~</span>
@@ -141,6 +142,24 @@ function addToItineraryHtml() {
       </div>
     </div>
   `;
+}
+
+function populateDaySelect() {
+  const tripSelect = document.getElementById("itineraryTripSelect");
+  const daySelect = document.getElementById("itineraryDaySelect");
+  const newTripInput = document.getElementById("newTripNameInput");
+  if (!tripSelect || !daySelect) return;
+  const tripId = tripSelect.value;
+  if (tripId === "__newtrip__") {
+    if (newTripInput) newTripInput.style.display = "block";
+    daySelect.innerHTML = `<option value="__new__">+ 새 Day (Day1)</option>`;
+    return;
+  }
+  if (newTripInput) newTripInput.style.display = "none";
+  const trip = itinerary.trips.find(t => t.id === tripId);
+  const days = trip ? trip.days : [];
+  daySelect.innerHTML = days.map(d => `<option value="${d.id}">${d.label}</option>`).join("")
+    + `<option value="__new__">+ 새 Day</option>`;
 }
 
 function showDetail(c) {
@@ -157,6 +176,7 @@ function showDetail(c) {
     ${addToItineraryHtml()}
   `;
   document.getElementById("detailCard").hidden = false;
+  populateDaySelect();
 }
 
 function renderCondoMarkers(list) {
@@ -219,6 +239,7 @@ function searchNearbyFood() {
              <div class="row"><span class="label">카테고리</span> ${r.category_name}</div>
              ${addToItineraryHtml()}`;
           document.getElementById("detailCard").hidden = false;
+          populateDaySelect();
         });
         const overlay = new kakao.maps.CustomOverlay({
           position: pos, content: pin, yAnchor: 1.4, clickable: true,
@@ -305,6 +326,23 @@ function saveStopTimeEdit(dayId, stopId, start, end) {
   drawItineraryOverlay();
 }
 
+function swapStopTime(dayId, stopId, direction) {
+  const day = findDay(dayId);
+  if (!day) return;
+  const { timed } = sortedStops(day);
+  const idx = timed.findIndex(s => s.id === stopId);
+  if (idx === -1) return;
+  const otherIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (otherIdx < 0 || otherIdx >= timed.length) return;
+  const a = timed[idx], b = timed[otherIdx];
+  const at = a.time, aet = a.endTime;
+  a.time = b.time; a.endTime = b.endTime;
+  b.time = at; b.endTime = aet;
+  saveItinerary();
+  renderTimeline();
+  drawItineraryOverlay();
+}
+
 function sortedStops(day) {
   const timed = day.stops.filter(s => s.time).sort((a, b) => a.time.localeCompare(b.time));
   const untimed = day.stops.filter(s => !s.time);
@@ -374,13 +412,23 @@ function renderTripTabs() {
   });
 }
 
+function deleteDay(trip, dayId) {
+  trip.days = trip.days.filter(d => d.id !== dayId);
+  saveItinerary();
+  if (selectedDayId === dayId) {
+    selectedDayId = trip.days[0] ? trip.days[0].id : null;
+  }
+}
+
 function renderDayTabs() {
   const el = document.getElementById("dayTabs");
   const trip = currentTrip();
   const days = trip ? trip.days : [];
   el.innerHTML = days.map(d =>
     `<button data-day="${d.id}" class="${d.id === selectedDayId ? "active" : ""}">${d.label}</button>`
-  ).join("") + `<button class="addDayBtn" id="addDayBtn">+ Day 추가</button>`;
+  ).join("")
+    + `<button class="addDayBtn" id="addDayBtn" aria-label="Day 추가">+</button>`
+    + (selectedDayId ? `<button class="addDayBtn" id="deleteDayBtn" aria-label="Day 삭제">🗑</button>` : "");
 
   el.querySelectorAll("button[data-day]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -395,6 +443,15 @@ function renderDayTabs() {
     const day = addDay();
     if (!day) return;
     selectedDayId = day.id;
+    renderAll();
+  });
+  const delDayBtn = document.getElementById("deleteDayBtn");
+  if (delDayBtn) delDayBtn.addEventListener("click", () => {
+    if (!requireItineraryReady()) return;
+    const day = findDay(selectedDayId);
+    if (!trip || !day) return;
+    if (!confirm(`"${day.label}"을(를) 삭제할까요? 안의 일정이 모두 사라져요.`)) return;
+    deleteDay(trip, day.id);
     renderAll();
   });
 }
@@ -438,6 +495,12 @@ function stopCard(day, stop, icon) {
           <button data-act="goto" data-day="${day.id}" data-stop="${stop.id}">지도보기</button>
           <button data-act="edit" data-day="${day.id}" data-stop="${stop.id}">수정</button>
           <button data-act="delete" data-day="${day.id}" data-stop="${stop.id}">삭제</button>
+          ${stop.time ? `
+          <span class="t-move">
+            <button data-act="move-up" data-day="${day.id}" data-stop="${stop.id}" aria-label="위 일정과 시간 바꾸기">↑</button>
+            <button data-act="move-down" data-day="${day.id}" data-stop="${stop.id}" aria-label="아래 일정과 시간 바꾸기">↓</button>
+          </span>
+          ` : ""}
         </div>
         `}
       </div>
@@ -602,6 +665,7 @@ function renderPlaceSearchResults(results) {
         ${addToItineraryHtml()}
       `;
       document.getElementById("detailCard").hidden = false;
+      populateDaySelect();
     });
   });
 }
@@ -655,7 +719,7 @@ function renderAiResults(items) {
       const btn = e.target;
       if (btn.classList.contains("added")) return;
       currentDetailItem = { name: r.place_name, type: "place", lat: Number(r.y), lng: Number(r.x) };
-      addStopToDay(dayId, it.suggestedTime || "", "");
+      addStopToDay(dayId, suggestedStartTime(), "");
       currentDetailItem = null;
       btn.textContent = "추가됨";
       btn.classList.add("added");
@@ -851,23 +915,26 @@ kakao.maps.load(() => {
       if (!requireItineraryReady()) return;
       const time = document.getElementById("itineraryTimeInput").value;
       const endTime = document.getElementById("itineraryEndTimeInput").value;
-      const newTripInput = document.getElementById("newTripNameInput");
-      let dayId;
-      if (newTripInput) {
-        const trip = addTrip(newTripInput.value.trim() || `여행${itinerary.trips.length + 1}`);
-        selectedTripId = trip.id;
-        dayId = addDay().id;
-      } else {
-        const select = document.getElementById("itineraryDaySelect");
-        dayId = select.value;
-        if (dayId === "__new__") dayId = addDay().id;
+      const tripSelect = document.getElementById("itineraryTripSelect");
+      let tripId = tripSelect.value;
+      if (tripId === "__newtrip__") {
+        const nameInput = document.getElementById("newTripNameInput");
+        const trip = addTrip((nameInput.value || "").trim() || `여행${itinerary.trips.length + 1}`);
+        tripId = trip.id;
       }
+      selectedTripId = tripId;
+      const daySelect = document.getElementById("itineraryDaySelect");
+      let dayId = daySelect.value;
+      if (dayId === "__new__" || !dayId) dayId = addDay().id;
       addStopToDay(dayId, time, endTime);
       document.getElementById("itineraryForm").classList.remove("open");
       selectedDayId = dayId;
       document.getElementById("detailCard").hidden = true;
       showItineraryPanel();
     }
+  });
+  document.getElementById("detailCard").addEventListener("change", e => {
+    if (e.target.id === "itineraryTripSelect") populateDaySelect();
   });
 
   let placeSearchDebounce;

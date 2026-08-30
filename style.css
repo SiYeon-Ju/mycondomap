@@ -179,9 +179,14 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 .timeline-stop:last-child .t-bar { display: none; }
 .timeline-stop .t-card { flex: 1; padding-bottom: 16px; }
 .timeline-stop .t-name { font-size: 14px; font-weight: 600; }
-.timeline-stop .t-actions { margin-top: 2px; }
+.timeline-stop .t-actions { margin-top: 2px; display: flex; align-items: center; }
 .timeline-stop .t-actions button {
   border: none; background: none; color: #888; font-size: 12px; padding: 2px 6px 2px 0;
+}
+.timeline-stop .t-move { margin-left: auto; display: flex; gap: 2px; }
+.timeline-stop .t-move button {
+  width: 22px; height: 22px; border-radius: 50%; background: #f0ede8; color: #3d2b1f;
+  font-weight: 700; padding: 0;
 }
 #addToItinerary { margin-top: 10px; padding: 10px; border-radius: 8px; border: none; background: #3d2b1f; color: #fff; font-weight: 700; width: 100%; }
 #itineraryForm { display: none; flex-direction: column; gap: 8px; margin-top: 8px; }
