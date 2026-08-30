@@ -415,10 +415,10 @@ function timeRangeLines(stop) {
 }
 
 function stopCard(day, stop, icon) {
-  const kakaoUrl = `https://map.kakao.com/link/map/${encodeURIComponent(stop.name)},${stop.lat},${stop.lng}`;
+  const kakaoAppUrl = `kakaomap://look?p=${stop.lat},${stop.lng}`;
   return `
     <div class="timeline-stop" data-stop="${stop.id}">
-      <a class="k-badge" href="${kakaoUrl}" target="_blank" rel="noopener" aria-label="카카오맵에서 보기">K</a>
+      <a class="k-badge" href="${kakaoAppUrl}" aria-label="카카오맵 앱에서 보기">K</a>
       <div class="t-time">${timeRangeLines(stop)}</div>
       <div class="t-line"><div class="t-dot"></div><div class="t-bar"></div></div>
       <div class="t-card">
