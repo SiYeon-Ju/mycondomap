@@ -101,7 +101,9 @@ function addToItineraryHtml() {
         ${options}
         <option value="__new__">+ 새 Day</option>
       </select>
-      <input id="itineraryTimeInput" type="time">
+      <input id="itineraryTimeInput" type="time" aria-label="시작 시각">
+      <span>~</span>
+      <input id="itineraryEndTimeInput" type="time" aria-label="종료 시각">
       <button id="itineraryConfirm" type="button">추가</button>
     </div>
   `;
@@ -234,11 +236,11 @@ function findDay(dayId) {
   return trip ? trip.days.find(d => d.id === dayId) : null;
 }
 
-function addStopToDay(dayId, time) {
+function addStopToDay(dayId, time, endTime) {
   if (!currentDetailItem) return;
   const day = findDay(dayId);
   if (!day) return;
-  day.stops.push({ id: uid(), time: time || "", ...currentDetailItem });
+  day.stops.push({ id: uid(), time: time || "", endTime: endTime || "", ...currentDetailItem });
   saveItinerary();
 }
 
@@ -255,9 +257,12 @@ function editStopTime(dayId, stopId) {
   const day = findDay(dayId);
   const stop = day && day.stops.find(s => s.id === stopId);
   if (!stop) return;
-  const next = prompt("시각 (HH:MM, 비우면 미정)", stop.time || "");
+  const current = stop.time + (stop.endTime ? `~${stop.endTime}` : "");
+  const next = prompt("시각 (예: 10:00~11:00, 비우면 미정)", current);
   if (next === null) return;
-  stop.time = next.trim();
+  const [start, end] = next.split("~").map(s => s.trim());
+  stop.time = start || "";
+  stop.endTime = end || "";
   saveItinerary();
   renderTimeline();
   drawItineraryOverlay();
@@ -337,10 +342,15 @@ function stopIcon(type) {
   return type === "food" ? "🍴" : type === "place" ? "📍" : "🏨";
 }
 
+function timeRangeLabel(stop) {
+  if (!stop.time) return "미정";
+  return stop.endTime ? `${stop.time}~${stop.endTime}` : stop.time;
+}
+
 function stopCard(day, stop, icon) {
   return `
     <div class="timeline-stop" data-stop="${stop.id}">
-      <div class="t-time">${stop.time || "미정"}</div>
+      <div class="t-time">${timeRangeLabel(stop)}</div>
       <div class="t-line"><div class="t-dot"></div><div class="t-bar"></div></div>
       <div class="t-card">
         <div class="t-name">${icon} ${stop.name}</div>
@@ -391,6 +401,28 @@ function renderTimeline() {
   });
 }
 
+const AVG_SPEED_KMH = 25; // 이동수단 모르니 대략적인 시내 이동 평균으로 추정 (API 없이 직선거리 기반)
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function timeToMinutes(hhmm) {
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function estimateTravelMinutes(a, b) {
+  const km = haversineKm(a.lat, a.lng, b.lat, b.lng);
+  return Math.max(1, Math.round(km / AVG_SPEED_KMH * 60));
+}
+
 function drawItineraryOverlay() {
   itineraryOverlays.forEach(o => o.setMap(null));
   itineraryOverlays = [];
@@ -404,12 +436,38 @@ function drawItineraryOverlay() {
   line.setMap(map);
   itineraryOverlays.push(line);
 
+  const tight = new Array(timed.length).fill(false);
+
   timed.forEach((s, i) => {
-    const badge = document.createElement("div");
-    badge.className = "price-pin";
-    badge.textContent = `${i + 1}. ${s.name}`;
+    if (i > 0) {
+      const prev = timed[i - 1];
+      const travelMin = estimateTravelMinutes(prev, s);
+      const prevEnd = timeToMinutes(prev.endTime) ?? timeToMinutes(prev.time);
+      const nextStart = timeToMinutes(s.time);
+      let gapLabel = `🚗 약 ${travelMin}분`;
+      if (prevEnd !== null && nextStart !== null) {
+        const gap = nextStart - prevEnd;
+        if (gap < travelMin) { tight[i] = true; gapLabel += ` (여유 ${gap}분 · 빠듯함)`; }
+      }
+      const midLat = (prev.lat + s.lat) / 2, midLng = (prev.lng + s.lng) / 2;
+      const edgeLabel = document.createElement("div");
+      edgeLabel.className = "edge-time" + (tight[i] ? " tight" : "");
+      edgeLabel.textContent = gapLabel;
+      const edgeOverlay = new kakao.maps.CustomOverlay({
+        position: new kakao.maps.LatLng(midLat, midLng), content: edgeLabel, yAnchor: 0.5,
+      });
+      edgeOverlay.setMap(map);
+      itineraryOverlays.push(edgeOverlay);
+    }
+
+    const marker = document.createElement("div");
+    marker.className = "route-marker";
+    marker.innerHTML = `
+      <div class="route-num${tight[i] ? " tight" : ""}">${i + 1}</div>
+      <div class="route-label">${timeRangeLabel(s)} ${s.name}</div>
+    `;
     const overlay = new kakao.maps.CustomOverlay({
-      position: new kakao.maps.LatLng(s.lat, s.lng), content: badge, yAnchor: 1.4,
+      position: new kakao.maps.LatLng(s.lat, s.lng), content: marker, yAnchor: 0.5, xAnchor: 0,
     });
     overlay.setMap(map);
     itineraryOverlays.push(overlay);
@@ -559,9 +617,10 @@ kakao.maps.load(() => {
     } else if (e.target.id === "itineraryConfirm") {
       const select = document.getElementById("itineraryDaySelect");
       const time = document.getElementById("itineraryTimeInput").value;
+      const endTime = document.getElementById("itineraryEndTimeInput").value;
       let dayId = select.value;
       if (dayId === "__new__") dayId = addDay().id;
-      addStopToDay(dayId, time);
+      addStopToDay(dayId, time, endTime);
       document.getElementById("itineraryForm").classList.remove("open");
       selectedDayId = dayId;
       document.getElementById("detailCard").hidden = true;

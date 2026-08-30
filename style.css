@@ -41,6 +41,24 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 }
 .price-pin.food { background: #1f6f43; }
 
+/* route stop marker (numbered) */
+.route-marker { display: flex; align-items: center; gap: 6px; }
+.route-num {
+  width: 24px; height: 24px; border-radius: 50%; background: #111; color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4); flex: none;
+}
+.route-label {
+  background: rgba(255,255,255,.95); padding: 3px 9px; border-radius: 12px;
+  font-size: 11px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.route-num.tight { background: #e91e8c; }
+.edge-time {
+  background: rgba(61,43,31,.85); color: #fff; font-size: 10px; padding: 2px 7px;
+  border-radius: 10px; white-space: nowrap;
+}
+.edge-time.tight { background: #e91e8c; }
+
 /* bottom sheet */
 #sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
