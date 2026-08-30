@@ -112,13 +112,27 @@ function makePin(text, extraClass, onClick) {
   return el;
 }
 
+function roundToHour(hhmm) {
+  const h = hhmm ? Number(hhmm.split(":")[0]) || 0 : 0;
+  return `${String(Math.min(23, h)).padStart(2, "0")}:00`;
+}
+
 function suggestedStartTime() {
   const day = findDay(selectedDayId);
   if (!day) return "00:00";
   const { timed } = sortedStops(day);
   if (!timed.length) return "00:00";
   const last = timed[timed.length - 1];
-  return last.endTime || last.time || "00:00";
+  return roundToHour(last.endTime || last.time || "00:00");
+}
+
+function hourOptionsHtml(selected) {
+  let html = `<option value="" ${!selected ? "selected" : ""}>미정</option>`;
+  for (let h = 0; h < 24; h++) {
+    const v = `${String(h).padStart(2, "0")}:00`;
+    html += `<option value="${v}" ${v === selected ? "selected" : ""}>${v}</option>`;
+  }
+  return html;
 }
 
 function addToItineraryHtml() {
@@ -135,9 +149,9 @@ function addToItineraryHtml() {
       <input id="newTripNameInput" type="text" placeholder="여행 이름 (예: 260831제주여행)" style="display:${itinerary.trips.length ? "none" : "block"}">
       <select id="itineraryDaySelect"></select>
       <div class="time-row">
-        <input id="itineraryTimeInput" type="time" aria-label="시작 시각" value="${suggestedStartTime()}">
+        <select id="itineraryTimeInput" aria-label="시작 시각">${hourOptionsHtml(suggestedStartTime())}</select>
         <span>~</span>
-        <input id="itineraryEndTimeInput" type="time" aria-label="종료 시각">
+        <select id="itineraryEndTimeInput" aria-label="종료 시각">${hourOptionsHtml("")}</select>
         <button id="itineraryConfirm" type="button">추가</button>
       </div>
     </div>
@@ -152,7 +166,7 @@ function populateDaySelect() {
   const tripId = tripSelect.value;
   if (tripId === "__newtrip__") {
     if (newTripInput) newTripInput.style.display = "block";
-    daySelect.innerHTML = `<option value="__new__">+ 새 Day (Day1)</option>`;
+    daySelect.innerHTML = `<option value="__new__">+ 1일차 생성</option>`;
     return;
   }
   if (newTripInput) newTripInput.style.display = "none";
@@ -482,9 +496,9 @@ function stopCard(day, stop, icon) {
         <div class="t-name">${icon} ${stop.name}</div>
         ${editing ? `
         <div class="time-row">
-          <input type="time" class="edit-time-start" value="${stop.time || ""}" aria-label="시작 시각">
+          <select class="edit-time-start" aria-label="시작 시각">${hourOptionsHtml(stop.time || "")}</select>
           <span>~</span>
-          <input type="time" class="edit-time-end" value="${stop.endTime || ""}" aria-label="종료 시각">
+          <select class="edit-time-end" aria-label="종료 시각">${hourOptionsHtml(stop.endTime || "")}</select>
         </div>
         <div class="t-actions">
           <button data-act="save-edit" data-day="${day.id}" data-stop="${stop.id}">저장</button>
@@ -942,13 +956,21 @@ kakao.maps.load(() => {
     clearTimeout(placeSearchDebounce);
     const q = e.target.value.trim();
     const resultsEl = document.getElementById("placeSearchResults");
+    document.getElementById("placeSearchClear").hidden = !q;
     if (!q) { resultsEl.innerHTML = ""; return; }
     placeSearchDebounce = setTimeout(() => {
       const ps = new kakao.maps.services.Places();
       ps.keywordSearch(q, (results, status) => {
         if (status !== kakao.maps.services.Status.OK) { resultsEl.innerHTML = ""; return; }
-        renderPlaceSearchResults(results.slice(0, 10));
+        renderPlaceSearchResults(results.slice(0, 3));
       });
     }, 400);
+  });
+  document.getElementById("placeSearchClear").addEventListener("click", () => {
+    const input = document.getElementById("placeSearchInput");
+    input.value = "";
+    document.getElementById("placeSearchResults").innerHTML = "";
+    document.getElementById("placeSearchClear").hidden = true;
+    input.focus();
   });
 });

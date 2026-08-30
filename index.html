@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>my콘도맵</title>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <div id="loginGate">
@@ -46,7 +46,10 @@
     <div class="sheetHandle"></div>
     <div id="tripTabs"></div>
     <div id="tripCostSummary" hidden></div>
-    <input id="placeSearchInput" type="text" placeholder="장소 검색 (성산일출봉, 협재해수욕장...)">
+    <div id="placeSearchWrap">
+      <input id="placeSearchInput" type="text" placeholder="장소 검색 (성산일출봉, 협재해수욕장...)">
+      <button id="placeSearchClear" hidden aria-label="검색어 지우기">✕</button>
+    </div>
     <div id="placeSearchResults"></div>
     <div id="dayTabs"></div>
     <div id="timeline"></div>
@@ -66,6 +69,6 @@
   <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=c92c6827cc8ac71114d08b8527972208&libraries=services&autoload=false"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
