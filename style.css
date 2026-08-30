@@ -38,7 +38,13 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
   background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25);
   display: flex; align-items: center; justify-content: center; font-size: 18px;
 }
-#aiFloatBtn.not-ready { opacity: .5; }
+.ai-btn {
+  background: linear-gradient(135deg, #7b2ff7, #b06ab3); color: #fff;
+  flex-direction: column; font-size: 13px; line-height: 1; gap: 1px;
+  box-shadow: 0 1px 6px rgba(123,47,247,.5);
+}
+.ai-btn span { font-size: 8px; font-weight: 800; letter-spacing: .3px; }
+#aiFloatBtn.not-ready { opacity: .45; filter: grayscale(60%); }
 #locateBtn.loading { opacity: .5; pointer-events: none; }
 #locateDot { width: 14px; height: 14px; border-radius: 50%; background: #e53935; box-shadow: 0 0 0 4px rgba(229,57,53,.25); }
 #locateBtn.loading #locateDot { animation: dot-blink .6s ease-in-out infinite; }
@@ -146,7 +152,7 @@ html, body { height: 100%; font-family: -apple-system, "Malgun Gothic", sans-ser
 #placeSearchResults .place-row button {
   border: none; background: #3d2b1f; color: #fff; border-radius: 6px; padding: 6px 10px; font-size: 12px;
 }
-#tripTabs, #dayTabs { display: flex; gap: 6px; padding: 0 12px 8px; overflow-x: auto; }
+#tripTabs, #dayTabs { display: flex; gap: 6px; padding: 0 12px 8px; overflow-x: auto; min-width: 0; }
 #tripTabs button, #dayTabs button {
   flex: none; padding: 6px 12px; border-radius: 16px; border: none;
   background: #f0ede8; font-size: 13px; white-space: nowrap;
