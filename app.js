@@ -36,6 +36,9 @@ function startItinerarySync() {
       selectedDayId = null;
     }
     if (!document.getElementById("itineraryPanel").hidden) renderAll();
+  }, error => {
+    console.error("Firestore 동기화 실패:", error);
+    alert("일정 서버 연결에 실패했어요: " + error.message);
   });
 }
 
@@ -111,14 +114,16 @@ function makePin(text, extraClass, onClick) {
 
 function addToItineraryHtml() {
   const trip = currentTrip();
-  const options = (trip ? trip.days : []).map(d => `<option value="${d.id}">${d.label}</option>`).join("");
+  const daySelectHtml = trip
+    ? `<select id="itineraryDaySelect">
+         ${trip.days.map(d => `<option value="${d.id}">${d.label}</option>`).join("")}
+         <option value="__new__">+ 새 Day</option>
+       </select>`
+    : `<input id="newTripNameInput" type="text" placeholder="여행 이름 (예: 260831제주여행)">`;
   return `
     <button id="addToItinerary" type="button">📅 일정에 추가</button>
     <div id="itineraryForm">
-      <select id="itineraryDaySelect">
-        ${options}
-        <option value="__new__">+ 새 Day</option>
-      </select>
+      ${daySelectHtml}
       <div class="time-row">
         <input id="itineraryTimeInput" type="time" aria-label="시작 시각">
         <span>~</span>
