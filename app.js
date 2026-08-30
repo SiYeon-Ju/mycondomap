@@ -110,7 +110,7 @@ function addToItineraryHtml() {
 }
 
 function showDetail(c) {
-  currentDetailItem = { name: c.콘도명, type: "condo", lat: c.lat, lng: c.lng };
+  currentDetailItem = { name: c.콘도명, type: "condo", lat: c.lat, lng: c.lng, 본인부담금: c.본인부담금 };
   const body = document.getElementById("detailBody");
   body.innerHTML = `
     <h2>${c.콘도명}</h2>
@@ -276,9 +276,30 @@ function sortedStops(day) {
 
 function renderAll() {
   renderTripTabs();
+  renderTripCost();
   renderDayTabs();
   renderTimeline();
   drawItineraryOverlay();
+}
+
+function tripCondoTotal(trip) {
+  let total = 0;
+  trip.days.forEach(day => {
+    day.stops.forEach(s => {
+      if (s.type === "condo" && s.본인부담금) total += minPrice(s.본인부담금);
+    });
+  });
+  return total;
+}
+
+function renderTripCost() {
+  const el = document.getElementById("tripCostSummary");
+  const trip = currentTrip();
+  if (!trip) { el.hidden = true; return; }
+  const total = tripCondoTotal(trip);
+  if (!total) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = `회사 콘도 최소 비용 합계: ${fmtWon(total)}~`;
 }
 
 function renderTripTabs() {
@@ -577,18 +598,20 @@ kakao.maps.load(() => {
   document.getElementById("locateBtn").addEventListener("click", () => {
     if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않아요."); return; }
     const btn = document.getElementById("locateBtn");
+    if (btn.classList.contains("loading")) return; // 이미 진행 중이면 재클릭 무시
     const status = document.getElementById("locateStatus");
     btn.classList.add("loading");
     status.hidden = false;
     status.textContent = "위치 찾는 중";
 
     let best = null;
+    let lastError = null;
     const watchId = navigator.geolocation.watchPosition(
       pos => {
         if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
         status.textContent = `위치 정밀도 높이는 중 (오차 ${Math.round(pos.coords.accuracy)}m)`;
       },
-      () => {},
+      err => { lastError = err; },
       { enableHighAccuracy: true, maximumAge: 0 }
     );
 
@@ -597,7 +620,11 @@ kakao.maps.load(() => {
       btn.classList.remove("loading");
       status.hidden = true;
       if (!best) {
-        alert("위치 권한이 거부됐거나 가져올 수 없어요. 브라우저 설정에서 위치 권한을 허용해주세요.");
+        if (lastError && lastError.code === lastError.PERMISSION_DENIED) {
+          alert("위치 권한이 거부됐어요. 브라우저 설정에서 위치 권한을 허용해주세요.");
+        } else {
+          alert("위치를 정확히 잡지 못했어요. 실외거나 신호가 좋은 곳에서 다시 시도해봐.");
+        }
         return;
       }
       const loc = new kakao.maps.LatLng(best.coords.latitude, best.coords.longitude);
