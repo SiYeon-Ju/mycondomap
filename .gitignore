@@ -1,0 +1,10 @@
+# 원본 데이터 소스 (지오코딩 스크립트 입력용, 앱은 condos.json만 읽음 — 공개 저장소에 안 올림)
+jeju_condo_info.csv
+seoul_hotel_info.csv
+gyeonggi_incheon_hotel_info.csv
+gyeonggi_incheon_hotel_info.xlsx
+chungcheong_hotel_info.csv
+chungcheong_hotel_info_2.csv
+Gyeongsang_Accommodations_List.csv
+gyeongsang_hotel_info.csv
+jeonla_hotel_info.csv
