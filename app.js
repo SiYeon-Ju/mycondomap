@@ -35,7 +35,7 @@ function startItinerarySync() {
       selectedTripId = itinerary.trips[0] ? itinerary.trips[0].id : null;
       selectedDayId = null;
     }
-    if (!document.getElementById("itineraryPanel").hidden) renderAll();
+    if (isItineraryPanelOpen()) renderAll();
   }, error => {
     console.error("Firestore 동기화 실패:", error);
     alert("일정 서버 연결에 실패했어요: " + error.message);
@@ -760,7 +760,7 @@ function renderAiResults(items) {
 }
 
 async function runAiSuggest() {
-  if (document.getElementById("itineraryPanel").hidden) showItineraryPanel();
+  if (!isItineraryPanelOpen()) showItineraryPanel();
   const day = findDay(selectedDayId);
   if (!day || !day.stops.length) {
     alert("먼저 이 Day에 콘도나 장소를 하나 이상 담아야, 그 주변으로 AI가 추천해줄 수 있어요.");
@@ -808,17 +808,22 @@ async function runAiSuggest() {
   }
 }
 
+// 콘도 검색 시트 ↔ 일정 패널 전환도 collapse(.collapsed)와 같은 max-height 트랜지션으로
+// 밀려 올라오게 하려고, display:none이 되는 [hidden] 대신 이 클래스로 전환함
+function isItineraryPanelOpen() {
+  return !document.getElementById("itineraryPanel").classList.contains("slide-hidden");
+}
+
 function updateItineraryToggleIcon() {
   const btn = document.getElementById("itineraryFloatBtn");
-  const panelOpen = !document.getElementById("itineraryPanel").hidden;
+  const panelOpen = isItineraryPanelOpen();
   btn.textContent = panelOpen ? "🏨" : "📅";
   btn.setAttribute("aria-label", panelOpen ? "콘도 검색으로 돌아가기" : "일정");
 }
 
 function showItineraryPanel() {
-  document.getElementById("sheet").hidden = true;
-  document.getElementById("itineraryPanel").hidden = false;
-  document.getElementById("itineraryPanel").classList.remove("collapsed");
+  document.getElementById("sheet").classList.add("slide-hidden");
+  document.getElementById("itineraryPanel").classList.remove("slide-hidden", "collapsed");
   if (!selectedTripId && itinerary.trips.length) selectedTripId = itinerary.trips[0].id;
   const trip = currentTrip();
   if (trip && !selectedDayId && trip.days.length) selectedDayId = trip.days[0].id;
@@ -827,8 +832,8 @@ function showItineraryPanel() {
 }
 
 function hideItineraryPanel() {
-  document.getElementById("itineraryPanel").hidden = true;
-  document.getElementById("sheet").hidden = false;
+  document.getElementById("itineraryPanel").classList.add("slide-hidden");
+  document.getElementById("sheet").classList.remove("slide-hidden");
   itineraryOverlays.forEach(o => o.setMap(null));
   itineraryOverlays = [];
   closeAiResults();
@@ -886,7 +891,7 @@ kakao.maps.load(() => {
   });
 
   document.getElementById("itineraryFloatBtn").addEventListener("click", () => {
-    if (document.getElementById("itineraryPanel").hidden) showItineraryPanel();
+    if (!isItineraryPanelOpen()) showItineraryPanel();
     else hideItineraryPanel();
   });
   document.getElementById("aiFloatBtn").addEventListener("click", runAiSuggest);
