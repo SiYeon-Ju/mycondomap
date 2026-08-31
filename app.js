@@ -882,7 +882,7 @@ function showItineraryPanel() {
 
 function hideItineraryPanel() {
   document.getElementById("itineraryPanel").classList.add("slide-hidden");
-  document.getElementById("sheet").classList.remove("slide-hidden");
+  document.getElementById("sheet").classList.remove("slide-hidden", "collapsed");
   itineraryOverlays.forEach(o => o.setMap(null));
   itineraryOverlays = [];
   closeAiResults();
@@ -905,7 +905,6 @@ kakao.maps.load(() => {
   document.querySelectorAll(".filter-btn[data-region]").forEach(btn => {
     btn.addEventListener("click", () => {
       hideItineraryPanel();
-      document.getElementById("sheet").classList.remove("collapsed");
       document.querySelectorAll(".filter-btn[data-region]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById("searchInput").value = "";
