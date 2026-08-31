@@ -6,6 +6,17 @@ my콘도맵
 배포 주소: https://siyeon-ju.github.io/mycondomap/
 
 
+기능
+
+- 지도에서 콘도/호텔 위치와 본인부담금 최소가 확인, 지역 필터
+- 주변 식당/카페 검색
+- 여행(Trip) > Day > 시간대별 일정(Stop) 관리, 같은 로그인 ID끼리 실시간 공유(Firestore)
+- Day에 담긴 장소 기준 1km 이내 AI 추천(Gemini), 채택한 것만 일정에 반영
+- 지도에 Day 동선(①②③ 번호 + 이동시간 표시)
+- 카카오맵 앱 딥링크(K 배지)
+- 공유 ID/PW 로그인 (가벼운 접근 제한용, 강한 보안 아님)
+
+
 파일 구조
 
 index.html            메인 페이지 마크업
@@ -13,20 +24,15 @@ app.js                전체 로직 (지도, 검색, 일정, AI 추천, 로그�
 style.css             스타일
 deamoon.png           로그인 화면 배너 이미지
 
-jeju_condo_info.csv              제주 콘도 원본 데이터
-seoul_hotel_info.csv             서울 호텔 원본 데이터
-gyeonggi_incheon_hotel_info.csv  경기/인천 호텔 원본 데이터 (xlsx에서 변환됨)
-gyeonggi_incheon_hotel_info.xlsx 위 원본 엑셀
-chungcheong_hotel_info.csv       충청 호텔 원본 데이터
-jeonla_hotel_info.csv            전라 호텔 원본 데이터
-Gyeongsang_Accommodations_List.csv  경상 원본 데이터 (영문 헤더, 다른 스키마)
-gyeongsang_hotel_info.csv        위 파일을 표준 스키마로 변환한 결과
+condos.json           지오코딩 완료된 콘도/호텔 데이터 (앱이 실제로 읽는 파일)
+scripts/geocode.js             지역별 원본 CSV를 카카오 API로 지오코딩 → condos.json 생성
+scripts/convert_gyeongsang.js  경상 원본(다른 스키마)을 표준 CSV로 변환
 
-scripts/geocode.js             위 CSV들을 읽어 카카오 API로 지오코딩 → condos.json 생성
-scripts/convert_gyeongsang.js  경상 원본(영문/다른 구조)을 표준 CSV로 변환
-condos.json                    지오코딩 완료된 최종 데이터 (앱이 실제로 읽는 파일)
+원본 CSV/xlsx 파일들(jeju_condo_info.csv 등)은 .gitignore 처리되어 저장소에는 없음.
+로컬에만 두고 scripts/geocode.js 돌릴 때만 사용. (아래 "데이터 갱신" 참고)
 
 vercel-proxy/api/suggest.js    AI 추천 기능용 서버리스 프록시 (Gemini API 키를 숨기는 역할)
+firestore.rules, firebase.json, .firebaserc    Firestore 보안 규칙 배포 설정
 
 
 사용 중인 외부 서비스 (전부 무료 티어, 카드 등록 없음)
@@ -41,6 +47,7 @@ vercel-proxy/api/suggest.js    AI 추천 기능용 서버리스 프록시 (Gemin
 3. Firebase (Firestore, Spark 무료 요금제)
    - 일정(Trip/Day/Stop) 데이터 저장. 로그인 ID별로 문서 분리, 같은 ID로 로그인하면 공유됨.
    - 콘솔: console.firebase.google.com (프로젝트: mycondomap-9d10b)
+   - 보안 규칙은 firestore.rules 참고, `firebase deploy --only firestore:rules`로 배포
 
 4. Google AI Studio (Gemini 2.5 Flash API)
    - "AI로 주변 추천받기" 기능에 사용. 무료 티어.
@@ -49,7 +56,6 @@ vercel-proxy/api/suggest.js    AI 추천 기능용 서버리스 프록시 (Gemin
 5. Vercel (Hobby 무료 플랜)
    - Gemini API 키를 숨기기 위한 프록시 서버 1개(vercel-proxy/api/suggest.js) 호스팅.
    - 프론트엔드가 이 프록시를 호출 → 프록시가 Gemini 호출 → 결과 반환.
-   - (참고: 처음엔 Cloudflare Workers로 시도했으나, Gemini가 Cloudflare IP를 차단해서(프록시/데이터센터로 인식) Vercel로 변경함)
 
 
 혹시 돈이 나갔다면 확인할 곳
@@ -73,12 +79,8 @@ vercel-proxy/api/suggest.js    AI 추천 기능용 서버리스 프록시 (Gemin
    Settings > Billing. Hobby 플랜인지 확인, 결제수단 등록 안 했으면 여기서도
    과금 자체가 불가능.
 
-4. Cloudflare 대시보드 (dash.cloudflare.com)
-   Workers 계정만 만들고 실제로는 안 씀(코드 배포는 했었지만 지금 프론트엔드가
-   호출 안 함). 여기도 결제수단 등록 안 함.
-
-5. 은행/카드사 앱에서 최근 해외결제/구독결제 내역 확인
-   위 4곳 다 문제없으면, 진짜 의심되는 결제는 이 프로젝트랑 무관한 다른 곳일
+4. 은행/카드사 앱에서 최근 해외결제/구독결제 내역 확인
+   위 다 문제없으면, 진짜 의심되는 결제는 이 프로젝트랑 무관한 다른 곳일
    가능성이 높음.
 
 
@@ -96,3 +98,8 @@ python -m http.server 8080
 2. scripts/geocode.js의 SOURCES 배열에 파일 추가
 3. KAKAO_REST_KEY=발급받은키 node scripts/geocode.js 실행 → condos.json 갱신
 4. git add/commit/push
+
+
+라이선스
+
+개인/가족 용도로만 만든 프로젝트. 재배포·상업적 이용 금지, 별도 라이선스 없음.
