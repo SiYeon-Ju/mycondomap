@@ -49,7 +49,10 @@ function saveItinerary() {
   }
   const id = itineraryDocId();
   if (!id) return;
-  db.collection("itineraries").doc(id).set(itinerary);
+  db.collection("itineraries").doc(id).set(itinerary).catch(error => {
+    console.error("Firestore 저장 실패:", error);
+    alert("일정 저장에 실패했어요: " + error.message);
+  });
 }
 function requireItineraryReady() {
   if (!itineraryReady) {
@@ -76,6 +79,13 @@ if (localStorage.getItem("condo_auth") === "ok") {
   document.getElementById("loginGate").style.display = "none";
   startItinerarySync();
 }
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  if (!confirm("로그아웃 할까요?")) return;
+  localStorage.removeItem("condo_auth");
+  localStorage.removeItem("condo_auth_id");
+  location.reload();
+});
+
 document.getElementById("loginForm").addEventListener("submit", e => {
   e.preventDefault();
   const id = document.getElementById("loginId").value;
@@ -182,6 +192,16 @@ function populateDaySelect() {
     + `<option value="__new__">+ 새 Day</option>`;
 }
 
+// Android 뒤로가기가 모달을 안 닫고 페이지를 통째로 나가버리는 문제 방지용 —
+// 모달 열 때 history 한 칸 밀어두고, 뒤로가기(popstate)가 오면 그 모달만 닫음
+function pushModalHistory() {
+  history.pushState({ modal: true }, "");
+}
+window.addEventListener("popstate", () => {
+  if (!document.getElementById("aiResults").hidden) { closeAiResults(); return; }
+  if (!document.getElementById("detailCard").hidden) { document.getElementById("detailCard").hidden = true; }
+});
+
 function showDetail(c) {
   closeAiResults();
   currentDetailItem = { name: c.콘도명, type: "condo", lat: c.lat, lng: c.lng, 본인부담금: c.본인부담금 };
@@ -197,6 +217,7 @@ function showDetail(c) {
   `;
   document.getElementById("detailCard").hidden = false;
   populateDaySelect();
+  pushModalHistory();
 }
 
 function renderCondoMarkers(list) {
@@ -260,6 +281,7 @@ function searchNearbyFood() {
              ${addToItineraryHtml()}`;
           document.getElementById("detailCard").hidden = false;
           populateDaySelect();
+          pushModalHistory();
         });
         const overlay = new kakao.maps.CustomOverlay({
           position: pos, content: pin, yAnchor: 1.4, clickable: true,
@@ -290,9 +312,9 @@ function deleteTrip(tripId) {
 function ensureTrip() {
   let trip = currentTrip();
   if (!trip) {
-    const name = prompt("여행 이름 (예: 260831제주여행)", "");
-    if (name === null) return null;
-    trip = addTrip(name.trim() || `여행${itinerary.trips.length + 1}`);
+    // Day처럼 이름 안 물어보고 바로 만듦 — window.prompt()가 폰 브라우저/PWA에서
+    // 안 뜨는 경우가 있어서, 이름이 꼭 필요한 곳(+ 여행 추가 버튼)만 인라인 입력창 씀
+    trip = addTrip(`여행${itinerary.trips.length + 1}`);
     selectedTripId = trip.id;
   }
   return trip;
@@ -403,11 +425,20 @@ function renderTripCost() {
   el.textContent = `숙소 비용(최소) ${fmtWon(total)}~`;
 }
 
+let addingTrip = false;
+
 function renderTripTabs() {
   const el = document.getElementById("tripTabs");
+  const addTripControl = addingTrip
+    ? `<span class="inline-add">
+         <input id="newTripInlineInput" type="text" placeholder="여행 이름 (예: 260831제주여행)">
+         <button class="addDayBtn" id="newTripInlineConfirm">추가</button>
+         <button class="addDayBtn" id="newTripInlineCancel">취소</button>
+       </span>`
+    : `<button class="addDayBtn" id="addTripBtn">+ 여행 추가</button>`;
   el.innerHTML = itinerary.trips.map(t =>
     `<button data-trip="${t.id}" class="${t.id === selectedTripId ? "active" : ""}">${t.name}</button>`
-  ).join("") + `<button class="addDayBtn" id="addTripBtn">+ 여행 추가</button>` +
+  ).join("") + addTripControl +
     (currentTrip() ? `<button class="addDayBtn" id="deleteTripBtn">🗑 삭제</button>` : "");
 
   el.querySelectorAll("button[data-trip]").forEach(btn => {
@@ -418,15 +449,30 @@ function renderTripTabs() {
       renderAll();
     });
   });
-  document.getElementById("addTripBtn").addEventListener("click", () => {
-    if (!requireItineraryReady()) return;
-    const name = prompt("여행 이름 (예: 260831제주여행)", "");
-    if (name === null) return;
-    const trip = addTrip(name.trim() || `여행${itinerary.trips.length + 1}`);
-    selectedTripId = trip.id;
-    selectedDayId = null;
-    renderAll();
-  });
+  if (addingTrip) {
+    const input = document.getElementById("newTripInlineInput");
+    input.focus();
+    const confirmAdd = () => {
+      if (!requireItineraryReady()) return;
+      const trip = addTrip(input.value.trim() || `여행${itinerary.trips.length + 1}`);
+      selectedTripId = trip.id;
+      selectedDayId = null;
+      addingTrip = false;
+      renderAll();
+    };
+    document.getElementById("newTripInlineConfirm").addEventListener("click", confirmAdd);
+    input.addEventListener("keydown", e => { if (e.key === "Enter") confirmAdd(); });
+    document.getElementById("newTripInlineCancel").addEventListener("click", () => {
+      addingTrip = false;
+      renderTripTabs();
+    });
+  } else {
+    document.getElementById("addTripBtn").addEventListener("click", () => {
+      if (!requireItineraryReady()) return;
+      addingTrip = true;
+      renderTripTabs();
+    });
+  }
   const delBtn = document.getElementById("deleteTripBtn");
   if (delBtn) delBtn.addEventListener("click", () => {
     if (!requireItineraryReady()) return;
@@ -440,6 +486,7 @@ function renderTripTabs() {
 
 function deleteDay(trip, dayId) {
   trip.days = trip.days.filter(d => d.id !== dayId);
+  trip.days.forEach((d, i) => { d.label = `Day${i + 1}`; });
   saveItinerary();
   if (selectedDayId === dayId) {
     selectedDayId = trip.days[0] ? trip.days[0].id : null;
@@ -694,6 +741,7 @@ function renderPlaceSearchResults(results) {
       `;
       document.getElementById("detailCard").hidden = false;
       populateDaySelect();
+      pushModalHistory();
     });
   });
 }
@@ -757,6 +805,7 @@ function renderAiResults(items) {
   });
   document.getElementById("aiBackdrop").hidden = false;
   document.getElementById("aiResults").hidden = false;
+  pushModalHistory();
 }
 
 async function runAiSuggest() {
