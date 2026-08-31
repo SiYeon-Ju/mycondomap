@@ -358,6 +358,12 @@ function swapStopTime(dayId, stopId, direction) {
   const at = a.time, aet = a.endTime;
   a.time = b.time; a.endTime = b.endTime;
   b.time = at; b.endTime = aet;
+  // 시간이 같은(같은 시간대) 스톱끼리는 위 시간값 교환이 무변화라 순서가 안 바뀐 것처럼 보임 —
+  // day.stops 배열 안에서의 위치도 같이 바꿔줘야, 동시각 정렬 시 동점 처리 순서가 실제로 뒤바뀜
+  const posA = day.stops.indexOf(a);
+  const posB = day.stops.indexOf(b);
+  day.stops[posA] = b;
+  day.stops[posB] = a;
   saveItinerary();
   renderTimeline();
   drawItineraryOverlay();
@@ -802,6 +808,13 @@ async function runAiSuggest() {
   }
 }
 
+function updateItineraryToggleIcon() {
+  const btn = document.getElementById("itineraryFloatBtn");
+  const panelOpen = !document.getElementById("itineraryPanel").hidden;
+  btn.textContent = panelOpen ? "🏨" : "📅";
+  btn.setAttribute("aria-label", panelOpen ? "콘도 검색으로 돌아가기" : "일정");
+}
+
 function showItineraryPanel() {
   document.getElementById("sheet").hidden = true;
   document.getElementById("itineraryPanel").hidden = false;
@@ -810,6 +823,7 @@ function showItineraryPanel() {
   const trip = currentTrip();
   if (trip && !selectedDayId && trip.days.length) selectedDayId = trip.days[0].id;
   renderAll();
+  updateItineraryToggleIcon();
 }
 
 function hideItineraryPanel() {
@@ -818,6 +832,7 @@ function hideItineraryPanel() {
   itineraryOverlays.forEach(o => o.setMap(null));
   itineraryOverlays = [];
   closeAiResults();
+  updateItineraryToggleIcon();
 }
 
 kakao.maps.load(() => {
@@ -870,7 +885,10 @@ kakao.maps.load(() => {
     document.getElementById("detailCard").hidden = true;
   });
 
-  document.getElementById("itineraryFloatBtn").addEventListener("click", showItineraryPanel);
+  document.getElementById("itineraryFloatBtn").addEventListener("click", () => {
+    if (document.getElementById("itineraryPanel").hidden) showItineraryPanel();
+    else hideItineraryPanel();
+  });
   document.getElementById("aiFloatBtn").addEventListener("click", runAiSuggest);
 
   document.getElementById("sheetHandle").addEventListener("click", () => {
